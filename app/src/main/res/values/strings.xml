@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">Училищна Програма2</string>
+    <string name="show_program_text">Покажи програмата</string>
+    <string name="choose_grade">Избери Клас</string>
+    <string name="title">Училищна\nпрограма</string>
+
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="loading_text">Зареждане...</string>
+    <string name="appwidget_text">EXAMPLE</string>
+    <string name="configure">Configure</string>
+    <string name="add_widget">Add widget</string>
+    <string name="title_activity_main_teacher">MainActivityTeacher</string>
+    <string name="teacher_view">Учителски изглед</string>
+</resources>
