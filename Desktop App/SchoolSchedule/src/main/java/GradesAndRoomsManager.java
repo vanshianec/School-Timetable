@@ -1,3 +1,5 @@
+package main.java;
+
 import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -9,8 +11,7 @@ import java.util.TreeMap;
 
 import static Constants.Constants.*;
 
-public class GradesAndRoomsManager extends Common{
-    private Map<String, Integer> gradesShift;
+public class GradesAndRoomsManager extends Common {
 
     private Map<String, Map<Integer, String>> mondayGrades;
     private Map<String, Map<Integer, String>> tuesdayGrades;
@@ -36,8 +37,7 @@ public class GradesAndRoomsManager extends Common{
     private Map<String, Map<Integer, String>> fridayRooms;
 
     public GradesAndRoomsManager(Workbook workbook, int[] indices) {
-        this.gradesShift = new LinkedHashMap<>();
-        super.setFirstShiftDividerIndex(workbook);
+        super.setGradesShift(workbook);
         setGradesAndRooms(workbook, indices);
         setGradesShift(workbook);
         setRoomsResult();
@@ -45,12 +45,14 @@ public class GradesAndRoomsManager extends Common{
 
     private void setGradesAndRooms(Workbook workbook, int[] indices) {
         for (int i = 0; i < indices.length; i++) {
-            setSortedGradesAndRooms(workbook.getSheetAt(i), indices[i]);
+            setSortedGradesAndRooms(workbook, indices[i]);
         }
 
     }
 
-    private void setSortedGradesAndRooms(Sheet sheet, int index) {
+    private void setSortedGradesAndRooms(Workbook workbook, int index) {
+        Sheet sheet = workbook.getSheetAt(index);
+        super.setColumnEndIndex(workbook, index);
         switch (index) {
             case 0:
                 this.mondayGrades = sortGrades(sheet, ROW_START_INDEX, MONDAY_ROW_END_INDEX);
@@ -80,6 +82,7 @@ public class GradesAndRoomsManager extends Common{
                 this.thursdaySecondShiftRooms = sortRooms(sheet, ROOM_ROW_SECOND_SHIFT_START_INDEX, ROOM_ROW_SECOND_SHIFT_END_INDEX);
                 break;
             case 7:
+                //TODO RENAME AND ROW
                 this.fridayFirstShiftRooms = sortRooms(sheet, ROW_START_INDEX, FRIDAY_ROOM_FIRST_SHIFT_END_INDEX);
                 this.fridaySecondShiftRooms = sortRooms(sheet, FRIDAY_ROOM_SECOND_SHIFT_START_INDEX, FRIDAY_ROOM_SECOND_SHIFT_END_INDEX);
                 break;
@@ -91,7 +94,7 @@ public class GradesAndRoomsManager extends Common{
         Row gradesRow = sheet.getRow(rowStartIndex);
 
         Map<String, Map<Integer, String>> sortedGrades = new LinkedHashMap<>();
-        for (int i = COLUMN_START_INDEX; i < COLUMN_END_INDEX; i++) {
+        for (int i = COLUMN_START_INDEX; i < super.getGradesColumnEndIndex(); i++) {
             String grade = new DataFormatter().formatCellValue(gradesRow.getCell(i));
             grade = getGrade(grade);
             sortedGrades.put(grade, new LinkedHashMap<>());
@@ -106,16 +109,14 @@ public class GradesAndRoomsManager extends Common{
         Row roomsRow = sheet.getRow(rowStartIndex);
         Map<Integer, Map<Integer, String>> sortedRooms = new LinkedHashMap<>();
         //then add the rooms
-        for (int i = ROOM_COLUMN_START_INDEX; i < ROOM_COLUMN_END_INDEX; i++) {
+        for (int i = ROOM_COLUMN_START_INDEX; i < super.getRoomsColumnEndIndex(); i++) {
             int room;
             //empty column in the table
-            if (i == 32) {
-                continue;
-            } else if (i == 33) {
+            if (i == super.getRoomsColumnEndIndex() - 3) {
                 room = 1;
-            } else if (i == 34) {
+            } else if (i == super.getRoomsColumnEndIndex() - 2) {
                 room = 2;
-            } else if (i == 35) {
+            } else if (i == super.getRoomsColumnEndIndex() - 1) {
                 room = 3;
             } else {
                 room = Integer.parseInt(new DataFormatter().formatCellValue(roomsRow.getCell(i)));
@@ -134,12 +135,14 @@ public class GradesAndRoomsManager extends Common{
         int order = Integer.parseInt(new DataFormatter().formatCellValue(row.getCell(ORDER_COLUMN_START_INDEX)));
         String teacherId = new DataFormatter().formatCellValue(row.getCell(i));
         //check if the cell is valid
-        if (!(teacherId.equals("") || teacherId.contains("ф") ||
+        if (!(teacherId.equals("") || teacherId.contains("ф") || teacherId.contains("-") ||
                 teacherId.contains("/") || teacherId.split("\\s+").length > 2)) {
 
+            //TODO DUPLICATED CODE
             if (teacherId.contains("ч")) {
                 teacherId = teacherId.replace("ч", "");
             }
+            //TODO TEST WITH TRIM
             if (teacherId.contains("\n")) {
                 teacherId = teacherId.replace("\n", "");
             }
@@ -148,13 +151,6 @@ public class GradesAndRoomsManager extends Common{
         }
     }
 
-    private void setGradesShift(Workbook workbook) {
-        for (int i = COLUMN_START_INDEX; i < COLUMN_END_INDEX; i++) {
-            String grade = new DataFormatter().formatCellValue(workbook.getSheetAt(0).getRow(ROW_START_INDEX).getCell(i));
-            grade = super.getGrade(grade);
-            this.gradesShift.put(grade, i < super.getFirstShiftDividerIndex() ? 1 : 2);
-        }
-    }
 
 
     private void setRoomsResult() {
@@ -178,7 +174,7 @@ public class GradesAndRoomsManager extends Common{
             //example value: key - 1 : value - 54 23
             Map<Integer, String> orderTeacherIdGrade = gradesEntry.getValue();
             //get rooms table based on the grade's shift
-            Map<Integer, Map<Integer, String>> dayRooms = this.gradesShift.get(grade) == 1 ? dayFirstShiftRooms : daySecondShiftRooms;
+            Map<Integer, Map<Integer, String>> dayRooms = super.getGradesShift().get(grade) == 1 ? dayFirstShiftRooms : daySecondShiftRooms;
             for (Map.Entry<Integer, Map<Integer, String>> roomsEntry : dayRooms.entrySet()) {
                 //example key: 504
                 String room = roomsEntry.getKey() + "";
@@ -208,7 +204,7 @@ public class GradesAndRoomsManager extends Common{
                                 result.put(grade, new TreeMap<>());
                             }
                             //this subject has no room
-                            if (teacherIdGrade.contains("ТП")) {
+                            if (teacherIdGrade.equalsIgnoreCase("ТП")) {
                                 result.get(grade).put(order, "ТП");
                             } else if (teacherIdRoom.trim().equals(teacherIdGrade.trim())) {
                                 result.get(grade).put(order, room);
@@ -243,7 +239,7 @@ public class GradesAndRoomsManager extends Common{
     }
 
     public Map<String, Integer> getGradesShift() {
-        return gradesShift;
+        return super.getGradesShift();
     }
 
     public Map<String, Map<Integer, String>> getMondayGrades() {

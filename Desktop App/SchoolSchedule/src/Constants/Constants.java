@@ -2,8 +2,11 @@ package Constants;
 
 public final class Constants {
     public static final int COLUMN_START_INDEX = 1;
+    //TODO GET COLUMN END INDEX
     public static final int COLUMN_END_INDEX = 37;
-    public static final int ROOM_COLUMN_START_INDEX = 2;
+    //TODO
+    public static final int ROOM_COLUMN_START_INDEX = 1;
+    //TODO
     public static final int ROOM_COLUMN_END_INDEX = 36;
     public static final int ORDER_COLUMN_START_INDEX = 0;
     public static final int ROW_START_INDEX = 1;
@@ -13,7 +16,7 @@ public final class Constants {
     //TODO EXCEL ONE EXTRA ROW
     public static final int MONDAY_ROW_END_INDEX = 11;
 
-    public static final int TUESDAY_ROW_START_INDEX = 13;
+    public static final int TUESDAY_ROW_START_INDEX = 12;
     public static final int TUESDAY_ROW_END_INDEX = 22;
 
     public static final int WEDNESDAY_ROW_END_INDEX = 10;
@@ -26,7 +29,6 @@ public final class Constants {
     public static final int FRIDAY_ROOM_SECOND_SHIFT_START_INDEX = 12;
     public static final int FRIDAY_ROOM_SECOND_SHIFT_END_INDEX = 22;
 
-    public static final String LAST_FIRST_SHIFT_GRADE = "12е";
     public static final String ENGLISH_TEXT_GRADE = "11e";
 
     public static final String MONDAY_ROOM_COLUMN = "monday_room";

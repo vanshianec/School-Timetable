@@ -1,3 +1,7 @@
+package main.java;
+
+import main.java.GradesAndRoomsManager;
+import main.java.TeachersManager;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -16,10 +20,17 @@ public class DatabaseManager {
     private TeachersManager teachersManager;
     private StringBuilder queryStringBuilder;
     private Map<Integer, String> teacherIdAndName;
+    private String username;
+    private String password;
+    private String databaseName;
 
-    public DatabaseManager(GradesAndRoomsManager gradesAndRoomsManager, TeachersManager teachersManager) throws IOException {
+    public DatabaseManager(GradesAndRoomsManager gradesAndRoomsManager, TeachersManager teachersManager,
+                           String username, String password, String databaseName) throws IOException {
         this.gradesAndRoomsManager = gradesAndRoomsManager;
         this.teachersManager = teachersManager;
+        this.username = username;
+        this.password = password;
+        this.databaseName = databaseName;
         this.queryStringBuilder = new StringBuilder();
         this.teacherIdAndName = new LinkedHashMap<>();
         this.setTeacherIdAndName();
@@ -222,7 +233,7 @@ public class DatabaseManager {
             for (Map.Entry<Integer, String> innerEntry : orderTeacherId.entrySet()) {
                 String teacherId = innerEntry.getValue();
                 //teachers for this subject are not shown
-                if (teacherId.contains("ТП")) {
+                if (teacherId.equalsIgnoreCase("ТП")) {
                     continue;
                 }
                 String teacherName = "";
@@ -248,9 +259,14 @@ public class DatabaseManager {
         URL u = new URL(url);
         Map<String, Object> params = new LinkedHashMap<>();
         params.put(key, query);
+        params.put("username", this.username);
+        params.put("password", this.password);
+        params.put("database", this.databaseName);
         StringBuilder postData = new StringBuilder();
         for (Map.Entry<String, Object> param : params.entrySet()) {
-            if (postData.length() != 0) postData.append('&');
+            if (postData.length() != 0) {
+                postData.append('&');
+            }
             postData.append(URLEncoder.encode(param.getKey(), "UTF-8"));
             postData.append('=');
             postData.append(URLEncoder.encode(String.valueOf(param.getValue()), "UTF-8"));

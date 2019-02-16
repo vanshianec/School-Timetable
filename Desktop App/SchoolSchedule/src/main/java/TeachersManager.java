@@ -1,3 +1,5 @@
+package main.java;
+
 import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -21,6 +23,9 @@ public class TeachersManager extends Common {
     private Map<Integer, Map<Integer, Integer>> thursdayRooms;
     private Map<Integer, Map<Integer, Integer>> fridayRooms;
 
+    //TODO ADD TEACHER ID AND SUBJECT
+    private Map<Integer,String> teacherIdAndName;
+
     public Map<Integer, Map<Integer, String>> getMondayGrades() {
         return mondayGrades;
     }
@@ -42,17 +47,22 @@ public class TeachersManager extends Common {
     }
 
     public TeachersManager(Workbook workbook, int[] indices) {
-        super.setFirstShiftDividerIndex(workbook);
+        super.setGradesShift(workbook);
         setTeachers(workbook, indices);
     }
 
     private void setTeachers(Workbook workbook, int[] indices) {
         for (int i = 0; i < indices.length; i++) {
-            setSortedTeachers(workbook.getSheetAt(i), indices[i]);
+            setSortedTeachers(workbook, indices[i]);
         }
     }
 
-    private void setSortedTeachers(Sheet sheet, int index) {
+    private void setSortedTeachers(Workbook workbook, int index) {
+        Sheet sheet = workbook.getSheetAt(index);
+        //Set column end index based on sheet index
+        //example : if the sheet index is '5' then the roomsColumnEndIndex will be set in the superclass
+        //or if the sheet index is '1' then the gradesColumnEndIndex will be set
+        super.setColumnEndIndex(workbook, index);
         switch (index) {
             case 0:
                 this.mondayGrades = sortGrades(sheet, ROW_START_INDEX, MONDAY_ROW_END_INDEX);
@@ -79,14 +89,16 @@ public class TeachersManager extends Common {
                 break;
             case 7:
                 this.fridayRooms = sortRooms(sheet, FRIDAY_ROOM_FIRST_SHIFT_END_INDEX, FRIDAY_ROOM_SECOND_SHIFT_START_INDEX, FRIDAY_ROOM_SECOND_SHIFT_END_INDEX);
-                break;
+            case 9:
+               // this.teacherIdAndName =
+               // break;
         }
     }
 
     private Map<Integer, Map<Integer, String>> sortGrades(Sheet sheet, int rowStartIndex, int rowEndIndex) {
         Map<Integer, Map<Integer, String>> sortedGrades = new LinkedHashMap<>();
         for (int i = rowStartIndex + 1; i < rowEndIndex; i++) {
-            for (int j = COLUMN_START_INDEX; j < COLUMN_END_INDEX; j++) {
+            for (int j = COLUMN_START_INDEX; j < super.getGradesColumnEndIndex(); j++) {
                 String teacherIds = new DataFormatter().formatCellValue(sheet.getRow(i).getCell(j));
                 if (teacherIdsIsValid(teacherIds)) {
                     sortedGrades = addSortedGrades(sortedGrades, teacherIds, j, i, sheet);
@@ -125,15 +137,16 @@ public class TeachersManager extends Common {
             sortedGrades = addSortedGradesValue(sortedGrades, teacherId, column, row, sheet);
         }
         return sortedGrades;
+
     }
 
     private Map<Integer, Map<Integer, String>> addSortedGradesValue(Map<Integer, Map<Integer, String>> sortedGrades,
                                                                     int teacherId, int column, int row, Sheet sheet) {
 
         int orderValue = Integer.parseInt(new DataFormatter().formatCellValue(sheet.getRow(row).getCell(ORDER_COLUMN_START_INDEX)));
-        int order = column < super.getFirstShiftDividerIndex() ? orderValue : orderValue + 8;
         String grade = new DataFormatter().formatCellValue(sheet.getRow(ROW_START_INDEX).getCell(column));
         grade = super.getGrade(grade);
+        int order = super.getGradesShift().get(grade) == 1 ? orderValue : orderValue + 8;
         sortedGrades.get(teacherId).put(order, grade);
         return sortedGrades;
     }
@@ -173,15 +186,14 @@ public class TeachersManager extends Common {
     }
 
     private void addSortedRooms(Sheet sheet, Map<Integer, Map<Integer, Integer>> sortedRooms, int orderAdderBasedOnShift, int i, int startIndex) {
-        for (int j = ROOM_COLUMN_START_INDEX; j < ROOM_COLUMN_END_INDEX; j++) {
+        for (int j = ROOM_COLUMN_START_INDEX; j < super.getRoomsColumnEndIndex(); j++) {
+            //TODO ADD TO SUPERCLASS
             int room;
-            if (j == 32) {
-                continue;
-            } else if (j == 33) {
+            if (j == super.getRoomsColumnEndIndex() - 3) {
                 room = 1;
-            } else if (j == 34) {
+            } else if (j == super.getRoomsColumnEndIndex() - 2) {
                 room = 2;
-            } else if (j == 35) {
+            } else if (j == super.getRoomsColumnEndIndex() - 1) {
                 room = 3;
             } else {
                 room = Integer.parseInt(new DataFormatter().formatCellValue(sheet.getRow(startIndex).getCell(j)));
@@ -203,8 +215,8 @@ public class TeachersManager extends Common {
 
 
     private boolean teacherIdsIsValid(String teacherIds) {
-        return !teacherIds.contains("ф") && !teacherIds.contains("/") && !teacherIds.equals("") &&
-                !teacherIds.contains("ТП") && teacherIds.split("\\s+").length <= 2;
+        return !teacherIds.contains("ф") && !teacherIds.contains("-") && !teacherIds.contains("/") && !teacherIds.equals("") &&
+                !teacherIds.equalsIgnoreCase("ТП") && teacherIds.split("\\s+").length <= 2;
     }
 
 }
