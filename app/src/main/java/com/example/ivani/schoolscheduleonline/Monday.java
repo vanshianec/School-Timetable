@@ -1,7 +1,6 @@
 package com.example.ivani.schoolscheduleonline;
 
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
@@ -11,6 +10,8 @@ import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+
+import com.example.ivani.schoolscheduleonline.Contracts.JsonData;
 
 import java.util.List;
 
@@ -46,10 +47,16 @@ public class Monday extends Fragment {
         }
         String mondayTeacherOrGrade = PreferenceManager.getDefaultSharedPreferences(getActivity().getApplicationContext())
                 .getBoolean("studentView", true) ? "monday_teacher" : "monday_grade";
-        JsonDataManager dataManager = new JsonDataManager(jsonString, mondayTeacherOrGrade, "monday_room",
-                getClass().getSimpleName(), new RowDataManager());
-        dataManager.parseJson();
-        tabRowList = dataManager.getTabRowList();
+        JsonData jsonDataManager;
+        if (mondayTeacherOrGrade.equals("monday_teacher")) {
+            jsonDataManager = new StudentJsonData(jsonString, mondayTeacherOrGrade, "monday_room",
+                    getClass().getSimpleName(), new RowDataManager(), getActivity().getApplicationContext());
+        } else {
+            jsonDataManager = new TeacherJsonData(jsonString, mondayTeacherOrGrade, "monday_room",
+                    getClass().getSimpleName(), new RowDataManager(), getActivity().getApplicationContext());
+        }
+        jsonDataManager.parseJson();
+        tabRowList = jsonDataManager.getResultList();
     }
 
     @Override

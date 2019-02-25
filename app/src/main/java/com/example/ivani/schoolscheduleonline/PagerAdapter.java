@@ -24,12 +24,7 @@ public class PagerAdapter extends FragmentStatePagerAdapter {
 
     @Override
     public Fragment getItem(int position) {
-        String response = "";
-        if (!manager.getBoolean("studentView", true)) {
-            response = manager.getString("ResponseTeacher", "");
-        } else {
-            response = manager.getString("Response", "");
-        }
+        String response = getResponse();
         switch (position) {
             case 0:
                 return Monday.newInstance(response);
@@ -43,6 +38,15 @@ public class PagerAdapter extends FragmentStatePagerAdapter {
                 return Friday.newInstance(response);
         }
         return null;
+    }
+
+    private String getResponse() {
+        //return teacher response String if the application is in teacher view
+        if (!manager.getBoolean("studentView", true)) {
+            return manager.getString("ResponseTeacher", "");
+        }
+        //else return student view response String
+        return manager.getString("Response", "");
     }
 
     @Override
