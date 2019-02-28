@@ -38,15 +38,11 @@ public class TeacherJsonData extends AbstractJsonData {
     }
 
     private void addResult(int orderCount, String name, JSONObject jsonobject) throws JSONException {
-        int order;
-        String clockTime;
-        String room;
-        String borderColor;
-        order = jsonobject.getInt(getDatabaseOrderColumnName());
+        int order = jsonobject.getInt(getDatabaseOrderColumnName());
         //set clock time based on subject order
-        clockTime = super.getRowDataManager().getTeacherCustomClockTime(order);
-        room = jsonobject.getString(super.getRoomDay());
-        borderColor = super.getRowDataManager().getColorBasedOnRealTime(clockTime, super.getDay());
+        String clockTime = super.getRowDataManager().getTeacherCustomClockTime(order);
+        String room = jsonobject.getString(super.getRoomDay());
+        String borderColor = super.getRowDataManager().getColorBasedOnRealTime(clockTime, super.getDay());
         super.addResult(new TabRow(orderCount, clockTime, name, room, borderColor));
     }
 

@@ -41,21 +41,17 @@ public class StudentJsonData extends AbstractJsonData {
     }
 
     private void addResult(int shift, String name, JSONObject jsonobject) throws JSONException {
-        int order;
-        String clockTime;
-        String room;
-        String borderColor;
-        order = jsonobject.getInt(getDatabaseOrderColumnName());
+        int order = jsonobject.getInt(getDatabaseOrderColumnName());
         //set clock time based on shift
-        clockTime = super.getRowDataManager().getCustomClockTimeBasedOnShift(shift, order);
+        String clockTime = super.getRowDataManager().getCustomClockTimeBasedOnShift(shift, order);
         //display two teachers on separated lines for better view
         //example teacherName1/teacherName2 -> teacherName1 \n teacherName2
         name = name.replace("/", "\n");
-        room = jsonobject.getString(super.getRoomDay());
+        String room = jsonobject.getString(super.getRoomDay());
         //add space between two rooms for better view
         room = room.replace("/", " / ");
         //set the border color on the current tab row
-        borderColor = super.getRowDataManager().getColorBasedOnRealTime(clockTime, super.getDay());
+        String borderColor = super.getRowDataManager().getColorBasedOnRealTime(clockTime, super.getDay());
         super.addResult(new TabRow(order, clockTime, name, room, borderColor));
     }
 

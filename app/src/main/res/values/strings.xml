@@ -12,4 +12,5 @@
     <string name="add_widget">Add widget</string>
     <string name="title_activity_main_teacher">MainActivityTeacher</string>
     <string name="teacher_view">Учителски изглед</string>
+    <string name="enter_school_text">Въведи училище</string>
 </resources>

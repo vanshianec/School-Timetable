@@ -85,4 +85,5 @@ public class AutoCompleteSchoolAdapter extends ArrayAdapter<SchoolItem> {
             return ((SchoolItem) resultValue).getSchoolName();
         }
     };
+
 }
