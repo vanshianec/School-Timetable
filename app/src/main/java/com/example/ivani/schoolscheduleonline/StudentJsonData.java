@@ -19,16 +19,13 @@ public class StudentJsonData extends AbstractJsonData {
 
     @Override
     public void parseJson() {
-        int shift;
         try {
             JSONArray jsonarray = new JSONArray(super.getJsonString());
-            shift = jsonarray.getJSONObject(getDatabaseRowIndex())
+            int shift = jsonarray.getJSONObject(getDatabaseRowIndex())
                     .getInt(getDatabaseShiftColumnName());
-            String name;
-
             for (int i = 0; i < jsonarray.length(); i++) {
                 JSONObject jsonobject = jsonarray.getJSONObject(i);
-                name = jsonobject.getString(this.teacherDay);
+                String name = jsonobject.getString(this.teacherDay);
                 //check if teacher exists in the current tab row
                 if (name != null && !name.isEmpty() && !name.equals("0")) {
                     //add the result to the tab row list
@@ -42,6 +39,10 @@ public class StudentJsonData extends AbstractJsonData {
 
     private void addResult(int shift, String name, JSONObject jsonobject) throws JSONException {
         int order = jsonobject.getInt(getDatabaseOrderColumnName());
+        //invalid excel table input
+        if (order == 0 && shift == 1) {
+            return;
+        }
         //set clock time based on shift
         String clockTime = super.getRowDataManager().getCustomClockTimeBasedOnShift(shift, order);
         //display two teachers on separated lines for better view

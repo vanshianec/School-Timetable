@@ -1,6 +1,7 @@
 package com.example.ivani.schoolscheduleonline;
 
 import android.content.Context;
+import android.widget.Toast;
 
 import com.example.ivani.schoolscheduleonline.BaseClasses.AbstractJsonData;
 
@@ -20,6 +21,7 @@ public class TeacherJsonData extends AbstractJsonData {
     public void parseJson() {
         int orderCount = 1;
         try {
+            System.out.println();
             JSONArray jsonarray = new JSONArray(super.getJsonString());
             String name;
             for (int i = 0; i < jsonarray.length(); i++) {

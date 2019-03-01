@@ -44,7 +44,7 @@ import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
     private static final String GET_SCHOOL_NAME_URL = "https://schooltimetable.site/get_school_name_and_logo.php";
-    private static final String GET_TEACHERS_OR_GRADES_NAMES = "https://schooltimetable.site/get_teachers_names.php";
+    private static final String GET_TEACHERS_OR_GRADES_NAMES = "https://schooltimetable.site/get_teachers_or_grades_names.php";
 
     private String[] displaySchoolList;
     private String[] displaySchoolLogosURLs;
@@ -54,6 +54,7 @@ public class MainActivity extends AppCompatActivity {
     private ErrorManager errorManager;
     private SharedPreferences sharedPreferences;
     private RequestQueue mQueue;
+    private AlertDialog chooseDialog;
     private Button showTimetableBtn;
     private Button chooseBtn;
     private Button switchBtn;
@@ -85,58 +86,29 @@ public class MainActivity extends AppCompatActivity {
         setFullscreenView();
         checkIfDialogIsShowing(savedInstanceState);
 
-        showTimetableBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(MainActivity.this, Timetable.class);
-                startActivity(intent);
-            }
-        });
-
-        changeSchool.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                loadChangeSchoolView();
-            }
-        });
-
-        chooseBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                boolean view = sharedPreferences.getBoolean("studentView", false);
-                String[] displayList = view ? displayGradesList : displayTeachersList;
-                if (displayList != null) {
-                    displayChooseDialog(displayList);
-                } else {
-                    takeNamesFromDatabaseAndDisplayThem(GET_TEACHERS_OR_GRADES_NAMES);
-                }
-            }
-        });
-
-        switchBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                //prevent the button from spamming
-                if (SystemClock.elapsedRealtime() - mLastClickTime < 1000) {
-                    return;
-                }
-                mLastClickTime = SystemClock.elapsedRealtime();
-                //save whether the app is in student or teacher view
-                if (sharedPreferences.getBoolean("studentView", true)) {
-                    sharedPreferences.edit().putBoolean("studentView", false).apply();
-                } else {
-                    sharedPreferences.edit().putBoolean("studentView", true).apply();
-                }
-                //set view with button click set on true
-                setView(sharedPreferences.getBoolean("studentView", true), true);
-            }
-        });
+        setShowTimetableListener();
+        setChangeSchoolListener();
+        setChooseListener();
+        setSwitchListener();
     }
 
     @Override
     public void onSaveInstanceState(Bundle bundle) {
         super.onSaveInstanceState(bundle);
         bundle.putBoolean("isDialogCancelled", isDialogCancelled);
+        bundle.putStringArray("gradesList", displayGradesList);
+        bundle.putStringArray("teachersList", displayTeachersList);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (this.chooseDialog != null) {
+            if (this.chooseDialog.isShowing()) {
+                this.chooseDialog.dismiss();
+            }
+        }
+
     }
 
     @Override
@@ -167,7 +139,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void loadChangeSchoolView() {
         this.sharedPreferences.edit().putBoolean("schoolList", true).apply();
-        takeNamesFromDatabaseAndDisplayThem(GET_SCHOOL_NAME_URL);
+        takeNamesFromDatabaseAndDisplayThem(GET_SCHOOL_NAME_URL, "school");
     }
 
     private void setView(boolean studentView, boolean buttonClick) {
@@ -228,7 +200,19 @@ public class MainActivity extends AppCompatActivity {
     private void checkIfDialogIsShowing(Bundle savedInstanceState) {
         isDialogCancelled = savedInstanceState == null || savedInstanceState.getBoolean("isDialogCancelled");
         if (!isDialogCancelled) {
-            displayChooseDialog(DISPLAY_GRADES_LIST);
+            if (sharedPreferences.getBoolean("studentView", false)) {
+                String[] gradesList = savedInstanceState.getStringArray("gradesList");
+                if (gradesList != null) {
+                    this.displayGradesList = gradesList;
+                    displayChooseDialog(gradesList);
+                }
+            } else {
+                String[] teacherList = savedInstanceState.getStringArray("teachersList");
+                if (teacherList != null) {
+                    this.displayTeachersList = teacherList;
+                    displayChooseDialog(teacherList);
+                }
+            }
         }
     }
 
@@ -237,7 +221,8 @@ public class MainActivity extends AppCompatActivity {
         // create and show the alert dialog
         AlertDialog dialog = builder.create();
         setAlertDialogSettings(dialog);
-        dialog.show();
+        this.chooseDialog = dialog;
+        this.chooseDialog.show();
     }
 
     @NonNull
@@ -325,7 +310,7 @@ public class MainActivity extends AppCompatActivity {
         listView.setOverscrollFooter(new ColorDrawable(Color.TRANSPARENT));
     }
 
-    public void takeNamesFromDatabaseAndDisplayThem(String url) {
+    public void takeNamesFromDatabaseAndDisplayThem(String url, final String view) {
         StringRequest request = new StringRequest(Request.Method.POST, url, new Response.Listener<String>() {
             @Override
             public void onResponse(String response) {
@@ -339,104 +324,197 @@ public class MainActivity extends AppCompatActivity {
         }) {
             @Override
             protected Map<String, String> getParams() {
-                //send key to php server to select given table
-                //after that the php server will return a table from the database in JSON format
-                Map<String, String> MyData = new HashMap<>();
-                //androidSchoolName
-                MyData.put("androidDatabase", sharedPreferences.getString("databaseName", ""));
-                return MyData;
+                return MainActivity.this.getParams(view);
             }
-
         };
         request.setRetryPolicy(new DefaultRetryPolicy(7000,
                 DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
                 DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
         mQueue.add(request);
         //show the teacher loading dialog and display the teachers on response
-        showNamesListLoadingDialog();
+        showNamesListLoadingDialog(view);
+    }
+
+    private Map<String, String> getParams(String view) {
+        //send key to php server to select given table
+        //after that the php server will return a table from the database in JSON format
+        Map<String, String> data = new HashMap<>();
+        //androidSchoolName
+        data.put("androidDatabase", sharedPreferences.getString("databaseName", ""));
+        if (view.equals("school")) {
+            return data;
+        } else if (view.equals("student")) {
+            data.put("grades_or_teachers", "grades");
+        } else {
+            data.put("grades_or_teachers", "teachers");
+        }
+        return data;
     }
 
     public void saveNamesInSharedPreference(String response) {
         //if we are in choose school list we need to store the response in the schools preferences
         if (this.sharedPreferences.getBoolean("schoolList", true)) {
             this.sharedPreferences.edit().putString("schools", response).apply();
-        } else {
+        } else if (!this.sharedPreferences.getBoolean("studentView", false)) {
             //else we are in choose teacher list so we store the response in the teachers preferences
             this.sharedPreferences.edit().putString("teachers", response).apply();
+        } else {
+            this.sharedPreferences.edit().putString("students", response).apply();
         }
     }
 
-    private void showNamesListLoadingDialog() {
+    private void showNamesListLoadingDialog(final String view) {
         final Dialog loadingDialog = requestManager.createLoadingDialog();
         mQueue.addRequestFinishedListener(new RequestQueue.RequestFinishedListener<String>() {
             @Override
             public void onRequestFinished(Request<String> request) {
                 if (loadingDialog.isShowing()) {
                     //check if we are are in teacher view or school select view and display the names list
-                    if (sharedPreferences.getBoolean("schoolList", true)
-                            || !sharedPreferences.getBoolean("studentView", false)) {
-                        displayNames();
-                    }
+                    displayNames(view);
                     loadingDialog.dismiss();
                 }
             }
         });
     }
 
-    private void displayNames() {
+    private void displayNames(String view) {
         try {
-            setNames();
-            if (sharedPreferences.getBoolean("schoolList", true)) {
-                if (displaySchoolList != null && displaySchoolLogosURLs != null) {
-                    Intent intent = new Intent(MainActivity.this, FirstLaunch.class);
-                    intent.putExtra("school_names", displaySchoolList);
-                    intent.putExtra("school_logos", displaySchoolLogosURLs);
-                    startActivity(intent);
-                } else {
-                    Toast.makeText(MainActivity.this, "Няма връзка със сървъра. Моля, опитайте по-късно",
-                            Toast.LENGTH_SHORT).show();
-                }
+            if (view.equals("school")) {
+                setSchoolDisplayLists();
+                startChooseSchoolActivity();
+            } else if (view.equals("student")) {
+                setGradesDisplayList();
+                displayChooseGradeDialog();
             } else {
+                setTeachersDisplayList();
+                displayChooseTeacherDialog();
 
-                if (displayTeachersList != null) {
-                    displayChooseDialog(displayTeachersList);
-                } else {
-                    Toast.makeText(MainActivity.this, "Няма връзка със сървъра. Моля, опитайте по-късно",
-                            Toast.LENGTH_SHORT).show();
-                }
             }
         } catch (JSONException e) {
             //TODO TOAST ERRRO !!;
         }
     }
 
-    public void setNames() throws JSONException {
-        String jsonString;
-        String name;
-        String logoURL = "";
-        JSONArray array;
-        if (this.sharedPreferences.getBoolean("schoolList", true)) {
-            jsonString = this.sharedPreferences.getString("schools", "");
-            array = new JSONArray(jsonString);
-            name = "school_name";
-            logoURL = "logo_url";
-            this.displaySchoolList = new String[array.length()];
-            this.displaySchoolLogosURLs = new String[array.length()];
-        } else {
-            jsonString = this.sharedPreferences.getString("teachers", "");
-            array = new JSONArray(jsonString);
-            name = "name";
-            this.displayTeachersList = new String[array.length()];
-        }
+    private void setSchoolDisplayLists() throws JSONException {
+        String jsonString = this.sharedPreferences.getString("schools", "");
+        JSONArray array = new JSONArray(jsonString);
+        String name = "school_name";
+        String logoURL = "logo_url";
+        this.displaySchoolList = new String[array.length()];
+        this.displaySchoolLogosURLs = new String[array.length()];
         for (int i = 0; i < array.length(); i++) {
             JSONObject jsonObject = array.getJSONObject(i);
-            if (name.equals("name")) {
-                this.displayTeachersList[i] = jsonObject.getString(name);
-            } else {
-                this.displaySchoolList[i] = jsonObject.getString(name);
-                this.displaySchoolLogosURLs[i] = jsonObject.getString(logoURL);
-            }
+            this.displaySchoolList[i] = jsonObject.getString(name);
+            this.displaySchoolLogosURLs[i] = jsonObject.getString(logoURL);
+        }
+
+    }
+
+    private void setGradesDisplayList() throws JSONException {
+        String jsonString = this.sharedPreferences.getString("students", "");
+        JSONArray array = new JSONArray(jsonString);
+        String name = "grade";
+        this.displayGradesList = new String[array.length()];
+        for (int i = 0; i < array.length(); i++) {
+            JSONObject jsonObject = array.getJSONObject(i);
+            this.displayGradesList[i] = jsonObject.getString(name);
         }
     }
 
+    private void setTeachersDisplayList() throws JSONException {
+        String jsonString = this.sharedPreferences.getString("teachers", "");
+        JSONArray array = new JSONArray(jsonString);
+        String name = "name";
+        this.displayTeachersList = new String[array.length()];
+        for (int i = 0; i < array.length(); i++) {
+            JSONObject jsonObject = array.getJSONObject(i);
+            this.displayTeachersList[i] = jsonObject.getString(name);
+        }
+    }
+
+    private void displayChooseTeacherDialog() {
+        if (displayTeachersList != null) {
+            displayChooseDialog(displayTeachersList);
+        } else {
+            Toast.makeText(MainActivity.this, "Няма връзка със сървъра. Моля, опитайте по-късно",
+                    Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void displayChooseGradeDialog() {
+        if (displayGradesList != null) {
+            displayChooseDialog(displayGradesList);
+        } else {
+            Toast.makeText(MainActivity.this, "Няма връзка със сървъра. Моля, опитайте по-късно",
+                    Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void startChooseSchoolActivity() {
+        if (displaySchoolList != null && displaySchoolLogosURLs != null) {
+            Intent intent = new Intent(MainActivity.this, FirstLaunch.class);
+            intent.putExtra("school_names", displaySchoolList);
+            intent.putExtra("school_logos", displaySchoolLogosURLs);
+            startActivity(intent);
+        } else {
+            Toast.makeText(MainActivity.this, "Няма връзка със сървъра. Моля, опитайте по-късно",
+                    Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void setSwitchListener() {
+        switchBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                //prevent the button from spamming
+                if (SystemClock.elapsedRealtime() - mLastClickTime < 1000) {
+                    return;
+                }
+                mLastClickTime = SystemClock.elapsedRealtime();
+                //save whether the app is in student or teacher view
+                if (sharedPreferences.getBoolean("studentView", true)) {
+                    sharedPreferences.edit().putBoolean("studentView", false).apply();
+                } else {
+                    sharedPreferences.edit().putBoolean("studentView", true).apply();
+                }
+                //set view with button click set on true
+                setView(sharedPreferences.getBoolean("studentView", true), true);
+            }
+        });
+    }
+
+    private void setChooseListener() {
+        chooseBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                boolean view = sharedPreferences.getBoolean("studentView", false);
+                String[] displayList = view ? displayGradesList : displayTeachersList;
+                if (displayList != null) {
+                    displayChooseDialog(displayList);
+                } else {
+                    //get grades or teachers list from database depending on the current view
+                    takeNamesFromDatabaseAndDisplayThem(GET_TEACHERS_OR_GRADES_NAMES, view ? "student" : "teacher");
+                }
+            }
+        });
+    }
+
+    private void setChangeSchoolListener() {
+        changeSchool.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                loadChangeSchoolView();
+            }
+        });
+    }
+
+    private void setShowTimetableListener() {
+        showTimetableBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(MainActivity.this, Timetable.class);
+                startActivity(intent);
+            }
+        });
+    }
 }
