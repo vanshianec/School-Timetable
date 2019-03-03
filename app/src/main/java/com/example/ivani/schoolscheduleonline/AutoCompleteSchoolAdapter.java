@@ -60,7 +60,6 @@ public class AutoCompleteSchoolAdapter extends ArrayAdapter<SchoolItem> {
                 suggestions.addAll(schoolListFull);
             } else {
                 String filterPattern = constraint.toString().toLowerCase().trim();
-
                 for (SchoolItem item : schoolListFull) {
                     if (item.getSchoolName().toLowerCase().contains(filterPattern)) {
                         suggestions.add(item);

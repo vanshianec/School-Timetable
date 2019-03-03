@@ -8,28 +8,21 @@
     android:orientation="vertical"
     tools:context=".FirstLaunch">
 
-    <ImageView
-        android:id = "@+id/search_vector"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginLeft="10dp"
-        android:layout_marginTop="38dp"
-        app:srcCompat="@drawable/ic_search_black_24dp" />
-
-    <AutoCompleteTextView
+    <com.example.ivani.schoolscheduleonline.CustomAutoCompleteTextView
         android:id="@+id/actv"
-        android:layout_toEndOf="@+id/search_vector"
         android:layout_marginTop="25dp"
-        android:layout_marginRight="38dp"
         android:padding="12dp"
+        android:layout_marginLeft="5dp"
+        android:layout_marginRight="5dp"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:completionThreshold="1"
+        android:drawableStart="@drawable/ic_search_black_24dp"
         android:textColorHint="#FFF"
         android:textColor="#FFF"
         android:backgroundTint="#FFF"
         android:hint="@string/enter_school_text"
-        android:imeOptions="actionNext"
+        android:imeOptions="flagNoExtractUi"
         android:inputType="text"
         android:maxLines="1" />
 

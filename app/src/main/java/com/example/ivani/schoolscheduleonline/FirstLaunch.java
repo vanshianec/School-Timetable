@@ -1,7 +1,6 @@
 package com.example.ivani.schoolscheduleonline;
 
 import android.annotation.SuppressLint;
-import android.app.Dialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -9,13 +8,8 @@ import android.graphics.Bitmap;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.preference.PreferenceManager;
-import android.support.annotation.NonNull;
-import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.text.Editable;
-import android.text.TextWatcher;
-import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
@@ -25,16 +19,10 @@ import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.Toast;
 
-import com.android.volley.AuthFailureError;
 import com.android.volley.DefaultRetryPolicy;
-import com.android.volley.NetworkError;
-import com.android.volley.NoConnectionError;
-import com.android.volley.ParseError;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
-import com.android.volley.ServerError;
-import com.android.volley.TimeoutError;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
@@ -51,73 +39,66 @@ import java.util.concurrent.TimeoutException;
 
 public class FirstLaunch extends AppCompatActivity {
     private List<SchoolItem> schoolItems;
+    private AutoCompleteTextView editText;
     private Button studentButton;
     private Button teacherButton;
     private RequestQueue mQueue;
     private SharedPreferences sharedPreferences;
     private RequestManager requestManager;
     private ErrorManager errorManager;
+    private SharedPreferences firstLaunch;
 
-    @SuppressLint("ClickableViewAccessibility")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_first_launch);
-        //display fullscreen background(no notification bar and action bar)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-            getWindow().setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
-        }
-
         this.studentButton = findViewById(R.id.school_student_view);
         this.teacherButton = findViewById(R.id.school_teacher_view);
         this.sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+        this.firstLaunch = PreferenceManager.getDefaultSharedPreferences(this);
         this.mQueue = Volley.newRequestQueue(getApplicationContext());
         this.errorManager = new ErrorManager(this);
         requestManager = new RequestManager(this, getApplicationContext(), errorManager);
 
+        setFullscreenView();
+
         final String[] schoolNames = getIntent().getStringArrayExtra("school_names");
         String[] schoolLogos = getIntent().getStringArrayExtra("school_logos");
+
+        this.editText = createAutoCompleteTextView(schoolNames, schoolLogos);
+
+        setOnTouchListener(this.editText);
+        setOnItemClickListener(this.editText);
+        setOnClickListener(schoolNames, this.editText);
+        checkIfSuggestionsIsShowing(savedInstanceState);
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle savedInstanceState) {
+        super.onSaveInstanceState(savedInstanceState);
+        savedInstanceState.putBoolean("dropdownNotPopped", this.sharedPreferences.getBoolean("firstLaunch", false));
+        savedInstanceState.putBoolean("dropdownShowing", this.editText.isPopupShowing());
+    }
+
+    public void checkIfSuggestionsIsShowing(Bundle savedInstanceState) {
+        boolean notShowing = savedInstanceState == null || savedInstanceState.getBoolean("dropdownNotPopped")
+                || !savedInstanceState.getBoolean("dropdownShowing");
+        if (!notShowing) {
+            this.firstLaunch.edit().putBoolean("firstLaunch", false).apply();
+        } else {
+            this.firstLaunch.edit().putBoolean("firstLaunch", true).apply();
+        }
+    }
+
+    private AutoCompleteTextView createAutoCompleteTextView(String[] schoolNames, String[] schoolLogos) {
         setSchoolItems(schoolNames, schoolLogos);
-        final AutoCompleteTextView editText = findViewById(R.id.actv);
+        final CustomAutoCompleteTextView editText = findViewById(R.id.actv);
         final AutoCompleteSchoolAdapter adapter = new AutoCompleteSchoolAdapter(this, this.schoolItems);
         editText.setAdapter(adapter);
-        editText.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                if (schoolItems.size() > 0) {
-                    // show all suggestions
-                    editText.showDropDown();
-                }
-                return false;
-            }
-        });
+        return editText;
+    }
 
-        editText.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-            }
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                if (s.length() == 0) {
-                    editText.setText(" ");
-                }
-            }
-
-            @Override
-            public void afterTextChanged(Editable s) {
-            }
-        });
-
-        editText.setOnDismissListener(new AutoCompleteTextView.OnDismissListener() {
-            @Override
-            public void onDismiss() {
-                InputMethodManager in = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-                in.hideSoftInputFromWindow(getCurrentFocus().getApplicationWindowToken(), 0);
-            }
-        });
-
+    private void setOnClickListener(final String[] schoolNames, final AutoCompleteTextView editText) {
         studentButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -130,6 +111,38 @@ public class FirstLaunch extends AppCompatActivity {
                 validateClick(editText, schoolNames, false);
             }
         });
+    }
+
+    private void setOnItemClickListener(final AutoCompleteTextView editText) {
+        editText.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                InputMethodManager in = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                in.hideSoftInputFromWindow(view.getApplicationWindowToken(), 0);
+            }
+        });
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private void setOnTouchListener(final AutoCompleteTextView editText) {
+        editText.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                if (schoolItems.size() > 0) {
+                    // show all suggestions
+                    editText.showDropDown();
+                }
+                return false;
+            }
+        });
+    }
+
+    private void setFullscreenView() {
+        //display fullscreen background(no notification bar and action bar)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            getWindow().setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
+        }
     }
 
 
