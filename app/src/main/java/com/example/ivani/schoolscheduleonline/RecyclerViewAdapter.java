@@ -12,7 +12,7 @@ import android.widget.TextView;
 
 import java.util.List;
 
-public class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewAdapter.ViewHolder>{
+public class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewAdapter.ViewHolder> {
 
     Context context;
     List<TabRow> data;
@@ -25,7 +25,7 @@ public class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewAdapte
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup viewGroup, int i) {
-        View view = LayoutInflater.from(context).inflate(R.layout.tab_row,viewGroup,false);
+        View view = LayoutInflater.from(context).inflate(R.layout.tab_row, viewGroup, false);
         return new ViewHolder(view);
     }
 
@@ -38,6 +38,11 @@ public class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewAdapte
         viewHolder.textViewRoom.setText(data.get(i).getRoomText());
         viewHolder.leftBorder.setBackgroundColor(Color.parseColor(data.get(i).getColor()));
         viewHolder.topBorder.setBackgroundColor(Color.parseColor(data.get(i).getColor()));
+        //increase the border size by little when the color is not white so the user can see his next grade more easily
+        if (!data.get(i).getColor().equals("#FFFFFF")) {
+            viewHolder.leftBorder.setLayoutParams(new FrameLayout.LayoutParams(6, FrameLayout.LayoutParams.MATCH_PARENT));
+            viewHolder.topBorder.setLayoutParams(new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, 6));
+        }
     }
 
     @Override
@@ -45,7 +50,7 @@ public class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewAdapte
         return data.size();
     }
 
-    public static class ViewHolder extends RecyclerView.ViewHolder{
+    public static class ViewHolder extends RecyclerView.ViewHolder {
 
         private TextView textViewOrder;
         private TextView textViewClock;
@@ -56,7 +61,7 @@ public class RecyclerViewAdapter extends RecyclerView.Adapter<RecyclerViewAdapte
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
-            textViewOrder= (TextView) itemView.findViewById(R.id.order_text);
+            textViewOrder = (TextView) itemView.findViewById(R.id.order_text);
             textViewClock = (TextView) itemView.findViewById(R.id.clock_text);
             textViewName = (TextView) itemView.findViewById(R.id.teacher_text);
             textViewRoom = (TextView) itemView.findViewById(R.id.room_text);

@@ -10,6 +10,9 @@ import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+
+import com.example.ivani.schoolscheduleonline.Contracts.JsonData;
+
 import java.util.List;
 
 
@@ -44,10 +47,16 @@ public class Friday extends Fragment {
         }
         String fridayTeacherOrGrade = PreferenceManager.getDefaultSharedPreferences(getActivity().getApplicationContext())
                 .getBoolean("studentView", true) ? "friday_teacher" : "friday_grade";
-        JsonDataManager dataManager = new JsonDataManager(jsonString,fridayTeacherOrGrade,"friday_room",
-                getClass().getSimpleName(),new RowDataManager());
-        dataManager.parseJson();
-        tabRowList = dataManager.getTabRowList();
+        JsonData jsonDataManager;
+        if (fridayTeacherOrGrade.equals("friday_teacher")) {
+            jsonDataManager = new StudentJsonData(jsonString, fridayTeacherOrGrade, "friday_room",
+                    getClass().getSimpleName(), new RowDataManager(), getActivity().getApplicationContext());
+        } else {
+            jsonDataManager = new TeacherJsonData(jsonString, fridayTeacherOrGrade, "friday_room",
+                    getClass().getSimpleName(), new RowDataManager(), getActivity().getApplicationContext());
+        }
+        jsonDataManager.parseJson();
+        tabRowList = jsonDataManager.getResultList();
     }
 
     @Override

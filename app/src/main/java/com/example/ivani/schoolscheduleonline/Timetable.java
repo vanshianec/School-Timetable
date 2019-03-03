@@ -83,6 +83,7 @@ public class Timetable extends AppCompatActivity implements Monday.OnFragmentInt
     }
 
     private void loadCurrentDay(ViewPager viewPager) {
+        //start timetable activity with the current day view
         Calendar c = Calendar.getInstance();
         int day = c.get(Calendar.DAY_OF_WEEK);
         int index = 0;
@@ -102,59 +103,4 @@ public class Timetable extends AppCompatActivity implements Monday.OnFragmentInt
         }
         viewPager.setCurrentItem(index);
     }
-
-    //THESE METHODS WILL BE USED LATER FOR THE WIDGET
-
-    //@SuppressLint("DefaultLocale")
-    //private TabLayout createTabLayout() {
-    //    TabLayout tabLayout = findViewById(R.id.tablayout);
-    //    String mondayDate, tuesdayDate, wednesdayDate, thursdayDate, fridayDate;
-    //
-    //    mondayDate = tuesdayDate = wednesdayDate = thursdayDate = fridayDate = "";
-
-    //    Calendar calendar = Calendar.getInstance();
-    //    int day = calendar.get(Calendar.DAY_OF_WEEK);
-    //    int previousDaysCount = getPreviousDaysCount(day);
-    //    //extract days based on the day of the week
-    //    calendar.add(Calendar.DATE, previousDaysCount);
-    //    mondayDate = String.format("%02d/", calendar.get(Calendar.DAY_OF_MONTH)) + String.format("%02d", calendar.get(Calendar.MONTH) + 1);
-    //    //then increment by one for the other days
-    //    calendar.add(Calendar.DATE, 1);
-    //    tuesdayDate = String.format("%02d/", calendar.get(Calendar.DAY_OF_MONTH)) + String.format("%02d", calendar.get(Calendar.MONTH) + 1);
-    //    calendar.add(Calendar.DATE, 1);
-    //    wednesdayDate = String.format("%02d/", calendar.get(Calendar.DAY_OF_MONTH)) + String.format("%02d", calendar.get(Calendar.MONTH) + 1);
-    //    calendar.add(Calendar.DATE, 1);
-    //    thursdayDate = String.format("%02d/", calendar.get(Calendar.DAY_OF_MONTH)) + String.format("%02d", calendar.get(Calendar.MONTH) + 1);
-    //    calendar.add(Calendar.DATE, 1);
-    //    fridayDate = String.format("%02d/", calendar.get(Calendar.DAY_OF_MONTH)) + String.format("%02d", calendar.get(Calendar.MONTH) + 1);
-
-    //    setTabsTitles(tabLayout);
-    //    return tabLayout;
-    //}
-
-    //private int getPreviousDaysCount(int day) {
-    //    int previousDaysCount = 0;
-    //    switch (day) {
-    //        case Calendar.TUESDAY:
-    //            previousDaysCount = -1;
-    //            break;
-    //        case Calendar.WEDNESDAY:
-    //            previousDaysCount = -2;
-    //            break;
-    //        case Calendar.THURSDAY:
-    //            previousDaysCount = -3;
-    //            break;
-    //        case Calendar.FRIDAY:
-    //            previousDaysCount = -4;
-    //            break;
-    //        case Calendar.SATURDAY:
-    //            previousDaysCount = -5;
-    //            break;
-    //        case Calendar.SUNDAY:
-    //            previousDaysCount = -6;
-    //            break;
-    //    }
-    //    return previousDaysCount;
-    //}
-
 }

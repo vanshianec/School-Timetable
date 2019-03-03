@@ -1,12 +1,17 @@
 package com.example.ivani.schoolscheduleonline;
 
 import android.app.Dialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.TransitionDrawable;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -14,23 +19,19 @@ import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Base64;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.Toast;
 
-import com.android.volley.AuthFailureError;
 import com.android.volley.DefaultRetryPolicy;
-import com.android.volley.NetworkError;
-import com.android.volley.NoConnectionError;
-import com.android.volley.ParseError;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
-import com.android.volley.ServerError;
-import com.android.volley.TimeoutError;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
@@ -39,21 +40,30 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.ByteArrayOutputStream;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
 
 public class MainActivity extends AppCompatActivity {
-    private static final String[] DISPLAY_GRADES_LIST = {"5а", "5б", "6а", "6б", "7а", "7б", "8а", "8б", "8в", "8г", "8д", "8е",
-            "9а", "9б", "9в", "9г", "9д", "9е", "10а", "10б", "10в", "10г", "10д", "10е",
-            "11а", "11б", "11в", "11г", "11д", "11е", "12а", "12б", "12в", "12г", "12д", "12е"};
+    private static final String GET_SCHOOL_NAME_URL = "https://schooltimetable.site/get_school_name_and_logo.php";
+    private static final String GET_TEACHERS_OR_GRADES_NAMES = "https://schooltimetable.site/get_teachers_or_grades_names.php";
 
+    private String[] displaySchoolList;
+    private String[] displaySchoolLogosURLs;
     private String[] displayTeachersList;
+    private String[] displayGradesList;
+    private RequestManager requestManager;
+    private ErrorManager errorManager;
     private SharedPreferences sharedPreferences;
     private RequestQueue mQueue;
+    private AlertDialog chooseDialog;
     private Button showTimetableBtn;
     private Button chooseBtn;
     private Button switchBtn;
+    private ImageView changeSchool;
+    private ImageView schoolLogo;
     private boolean isDialogCancelled;
     private View layout;
     private TransitionDrawable transitionDrawable;
@@ -66,71 +76,51 @@ public class MainActivity extends AppCompatActivity {
         showTimetableBtn = findViewById(R.id.showProgram);
         chooseBtn = findViewById(R.id.chooseGrade);
         switchBtn = findViewById(R.id.switchBtn);
-
+        changeSchool = findViewById(R.id.changeSchool);
+        mQueue = Volley.newRequestQueue(getApplicationContext());
+        schoolLogo = findViewById(R.id.logoId);
+        errorManager = new ErrorManager(this);
+        requestManager = new RequestManager(this, getApplicationContext(), errorManager);
         layout = findViewById(R.id.mainlayout);
         transitionDrawable = (TransitionDrawable) layout.getBackground();
         mLastClickTime = 0;
 
-        if (firstTimeLaunch()) {
-            System.out.println();
-            //set sharedPreferences for student view
-            this.sharedPreferences.edit().putBoolean("studentView", true).apply();
-        } else {
-            //set the view without button click
-            setView(this.sharedPreferences.getBoolean("studentView", true), false);
-        }
-
-        //display fullscreen background(no notification bar and action bar)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-            getWindow().setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
-        }
+        setViewBasedOnLaunch();
+        setBitmapLogo();
+        setFullscreenView();
         checkIfDialogIsShowing(savedInstanceState);
 
-        mQueue = Volley.newRequestQueue(getApplicationContext());
-        showTimetableBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(MainActivity.this, Timetable.class);
-                startActivity(intent);
-            }
-        });
+        setShowTimetableListener();
+        setChangeSchoolListener();
+        setChooseListener();
+        setSwitchListener();
+    }
 
-        chooseBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (!sharedPreferences.getBoolean("studentView", false)) {
-                    if (displayTeachersList != null) {
-                        //the teachers names where loaded before so we don't need to get them from the database
-                        displayChooseDialog(displayTeachersList);
-                    } else {
-                        //take teachers names and display them for the first time
-                        takeTeachersNamesFromDatabaseAndDisplayThem();
-                    }
-                } else {
-                    displayChooseDialog(DISPLAY_GRADES_LIST);
-                }
-            }
-        });
+    private boolean isNetworkAvailable() {
+        ConnectivityManager connectivityManager
+                = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+        return activeNetworkInfo != null && activeNetworkInfo.isConnected();
+    }
 
-        switchBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                //prevent the button from spamming
-                if (SystemClock.elapsedRealtime() - mLastClickTime < 1000) {
-                    return;
-                }
-                mLastClickTime = SystemClock.elapsedRealtime();
-                //save whether the app is in student or teacher view
-                if (sharedPreferences.getBoolean("studentView", true)) {
-                    sharedPreferences.edit().putBoolean("studentView", false).apply();
-                } else {
-                    sharedPreferences.edit().putBoolean("studentView", true).apply();
-                }
-                //set view with button click set on true
-                setView(sharedPreferences.getBoolean("studentView", true), true);
+    @Override
+    public void onSaveInstanceState(Bundle bundle) {
+        super.onSaveInstanceState(bundle);
+        bundle.putBoolean("isDialogCancelled", isDialogCancelled);
+        bundle.putStringArray("gradesList", displayGradesList);
+        bundle.putStringArray("teachersList", displayTeachersList);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        //dismiss dialog (mainly on screen rotation) so we can use it again when the view changes
+        if (this.chooseDialog != null) {
+            if (this.chooseDialog.isShowing()) {
+                this.chooseDialog.dismiss();
             }
-        });
+        }
+
     }
 
     @Override
@@ -139,30 +129,48 @@ public class MainActivity extends AppCompatActivity {
         moveTaskToBack(true);
     }
 
-    public void onSaveInstanceState(Bundle bundle) {
-        super.onSaveInstanceState(bundle);
-        bundle.putBoolean("isDialogCancelled", isDialogCancelled);
+    private void setViewBasedOnLaunch() {
+        if (firstTimeLaunch()) {
+            //the app is launching for the first time
+            // using the following line to edit/commit prefs
+            //if the app is launching for the first time we have to display the choose school list
+            loadChangeSchoolView();
+        } else if (this.sharedPreferences.getBoolean("studentFirstStart", false)
+                && this.sharedPreferences.getBoolean("studentView", false)) {
+            //pass true in setView means that the grades will be displayed
+            setView(true, false);
+        } else if (this.sharedPreferences.getBoolean("teacherFirstStart", false)
+                && !this.sharedPreferences.getBoolean("studentView", false)) {
+            //pass false in setView means that the teachers will be displayed
+            setView(false, false);
+        } else {
+            setView(this.sharedPreferences.getBoolean("studentView", true), false);
+        }
     }
 
     private boolean firstTimeLaunch() {
         this.sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
         if (this.sharedPreferences.getBoolean("firstrun", true)) {
-            //the app is launching for the first time
-            // using the following line to edit/commit prefs
-            this.sharedPreferences.edit().putBoolean("firstrun", false).apply();
             return true;
         }
         return false;
     }
 
-    private void setView(boolean studentView, boolean buttonClick) {
+    private void loadChangeSchoolView() {
+        this.sharedPreferences.edit().putBoolean("schoolList", true).apply();
+        takeNamesFromDatabaseAndDisplayThem(GET_SCHOOL_NAME_URL, "school");
+    }
 
+    private void setView(boolean studentView, boolean buttonClick) {
         //if studentView is true we set the view in student view
         if (studentView) {
             chooseBtn.setText("Избери клас");
             switchBtn.setText("Учителски изглед");
             if (buttonClick) {
                 transitionDrawable.reverseTransition(1000);
+            }
+            if (this.sharedPreferences.getBoolean("studentFirstStart", false)) {
+                displayChooseList(true);
             }
         }
         //else we set the view in teacherView
@@ -175,13 +183,61 @@ public class MainActivity extends AppCompatActivity {
                 //since there is no button click that means the app was closed in teacher view so we instantly start the transition
                 transitionDrawable.startTransition(0);
             }
+            if (this.sharedPreferences.getBoolean("teacherFirstStart", false)) {
+                displayChooseList(false);
+            }
+        }
+    }
+
+    private void setBitmapLogo() {
+        Bitmap logo = getIntent().getParcelableExtra("BitmapLogo");
+        if (logo != null) {
+            this.schoolLogo.setImageBitmap(logo);
+            String encode = encodeToBase64(logo);
+            this.sharedPreferences.edit().putString("bit", encode).apply();
+        } else {
+            Bitmap currentLogo = decodeBase64(this.sharedPreferences.getString("bit", ""));
+            this.schoolLogo.setImageBitmap(currentLogo);
+        }
+    }
+
+    private String encodeToBase64(Bitmap image) {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        image.compress(Bitmap.CompressFormat.PNG, 100, baos);
+        byte[] b = baos.toByteArray();
+        return Base64.encodeToString(b, Base64.DEFAULT);
+    }
+
+    private Bitmap decodeBase64(String input) {
+        byte[] decodedByte = Base64.decode(input, 0);
+        return BitmapFactory
+                .decodeByteArray(decodedByte, 0, decodedByte.length);
+    }
+
+    private void setFullscreenView() {
+        //display fullscreen background(no notification bar and action bar)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            getWindow().setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
         }
     }
 
     private void checkIfDialogIsShowing(Bundle savedInstanceState) {
         isDialogCancelled = savedInstanceState == null || savedInstanceState.getBoolean("isDialogCancelled");
         if (!isDialogCancelled) {
-            displayChooseDialog(DISPLAY_GRADES_LIST);
+            if (sharedPreferences.getBoolean("studentView", false)) {
+                String[] gradesList = savedInstanceState.getStringArray("gradesList");
+                if (gradesList != null) {
+                    this.displayGradesList = gradesList;
+                    displayChooseDialog(gradesList);
+                }
+            } else {
+                String[] teacherList = savedInstanceState.getStringArray("teachersList");
+                if (teacherList != null) {
+                    this.displayTeachersList = teacherList;
+                    displayChooseDialog(teacherList);
+                }
+            }
         }
     }
 
@@ -190,27 +246,8 @@ public class MainActivity extends AppCompatActivity {
         // create and show the alert dialog
         AlertDialog dialog = builder.create();
         setAlertDialogSettings(dialog);
-        dialog.show();
-    }
-
-    private void setAlertDialogSettings(AlertDialog dialog) {
-        dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
-            @Override
-            public void onDismiss(DialogInterface dialog) {
-                isDialogCancelled = true;
-            }
-        });
-        dialog.setOnShowListener(new DialogInterface.OnShowListener() {
-            @Override
-            public void onShow(DialogInterface dialog) {
-                isDialogCancelled = false;
-            }
-        });
-        ListView listView = dialog.getListView();
-        listView.setDivider(new ColorDrawable(Color.parseColor("#D3D3D3")));
-        listView.setDividerHeight(2);
-        //remove last divider
-        listView.setOverscrollFooter(new ColorDrawable(Color.TRANSPARENT));
+        this.chooseDialog = dialog;
+        this.chooseDialog.show();
     }
 
     @NonNull
@@ -236,56 +273,20 @@ public class MainActivity extends AppCompatActivity {
         return builder;
     }
 
-    public void takeTeachersNamesFromDatabaseAndDisplayThem() {
-        String url = "https://liverpoolynwa.000webhostapp.com/get_teachers_names.php";
-        StringRequest request = new StringRequest(Request.Method.GET, url, new Response.Listener<String>() {
-            @Override
-            public void onResponse(String response) {
-                saveTeachersInSharedPreference(response);
-            }
-        }, new Response.ErrorListener() {
-            @Override
-            public void onErrorResponse(VolleyError error) {
-                displayErrorMessage(error);
-            }
-        });
-        request.setRetryPolicy(new DefaultRetryPolicy(7000,
-                DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
-                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
-        mQueue.add(request);
-        //show the teacher loading dialog and display the teachers on response
-        showTeacherLoadingDialog();
-    }
-
-    public void saveTeachersInSharedPreference(String response) {
-        this.sharedPreferences.edit().putString("teachers", response).apply();
-    }
-
-    public String[] getTeachersNames() throws JSONException {
-        String jsonString = this.sharedPreferences.getString("teachers", "");
-        JSONArray array = new JSONArray(jsonString);
-        String[] displayTeacherList = new String[array.length()];
-        for (int i = 0; i < array.length(); i++) {
-            JSONObject jsonObject = array.getJSONObject(i);
-            displayTeacherList[i] = jsonObject.getString("name");
-        }
-        return displayTeacherList;
-    }
-
     public void takeSelectedTableFromDatabase(final String value) {
         //send request to the database
-        String url = "https://liverpoolynwa.000webhostapp.com/get_data.php";
+        String url = "https://schooltimetable.site/get_school_grade_or_teacher_data.php";
         StringRequest request = new StringRequest(Request.Method.POST, url,
                 new Response.Listener<String>() {
                     @Override
                     public void onResponse(String response) {
-                        //save result from database in shared preferences
-                        saveInSharedResponse(response);
+                        manageGradeOrTeacherResponse(response);
                     }
                 }, new Response.ErrorListener() { //Create an error listener to handle errors appropriately.
             @Override
             public void onErrorResponse(VolleyError error) {
-                displayErrorMessage(error);
+                errorManager.displayErrorMessage(error);
+                finish();
             }
         }) {
             @Override
@@ -293,6 +294,8 @@ public class MainActivity extends AppCompatActivity {
                 //send key to php server to select given table
                 //after that the php server will return a table from the database in JSON format
                 Map<String, String> MyData = new HashMap<>();
+                //androidSchoolName
+                MyData.put("androidDatabase", sharedPreferences.getString("databaseName", ""));
                 MyData.put("androidKey", value);
                 return MyData;
             }
@@ -301,78 +304,26 @@ public class MainActivity extends AppCompatActivity {
                 DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
                 DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
         mQueue.add(request);
-        showLoadingDialogUntilResponse();
+        requestManager.showLoadingDialogUntilResponse(mQueue);
     }
 
-    private void displayErrorMessage(VolleyError error) {
-        String message = null;
-        if (error instanceof NetworkError) {
-            message = "Cannot connect to Internet...Please check your connection!";
-        } else if (error instanceof ServerError) {
-            message = "The server could not be found. Please try again after some time!!";
-        } else if (error instanceof AuthFailureError) {
-            message = "Cannot connect to Internet...Please check your connection!";
-        } else if (error instanceof ParseError) {
-            message = "Parsing error! Please try again after some time!!";
-        } else if (error instanceof NoConnectionError) {
-            message = "Cannot connect to Internet...Please check your connection!";
-        } else if (error instanceof TimeoutError) {
-            message = "Connection TimeOut! Please check your internet connection.";
+    private void manageGradeOrTeacherResponse(String response) {
+        //check if response contains sql error message
+        if (response.toLowerCase().contains("error")) {
+            Toast.makeText(MainActivity.this, "Грешка при обработването на данните. Моля, опитайте по-късно"
+                    , Toast.LENGTH_SHORT).show();
+            finish();
+        } else {
+            //save result from database in shared preferences
+            saveInSharedResponse(response);
+            if (sharedPreferences.getBoolean("studentFirstStart", false)
+                    && sharedPreferences.getBoolean("studentView", false)) {
+                sharedPreferences.edit().putBoolean("studentFirstStart", false).apply();
+            } else if (sharedPreferences.getBoolean("teacherFirstStart", false)
+                    && !sharedPreferences.getBoolean("studentView", false)) {
+                sharedPreferences.edit().putBoolean("teacherFirstStart", false).apply();
+            }
         }
-        Toast.makeText(getApplicationContext(), message, Toast.LENGTH_LONG).show();
-    }
-
-    private void showLoadingDialogUntilResponse() {
-        final Dialog loadingDialog = createLoadingDialog();
-        mQueue.addRequestFinishedListener(new RequestQueue.RequestFinishedListener<String>() {
-            @Override
-            public void onRequestFinished(Request<String> request) {
-                if (loadingDialog.isShowing()) {
-                    loadingDialog.dismiss();
-                }
-            }
-        });
-    }
-
-    private void showTeacherLoadingDialog() {
-        final Dialog loadingDialog = createLoadingDialog();
-        mQueue.addRequestFinishedListener(new RequestQueue.RequestFinishedListener<String>() {
-            @Override
-            public void onRequestFinished(Request<String> request) {
-                if (loadingDialog.isShowing()) {
-                    //display the teachers on response
-                    if (!sharedPreferences.getBoolean("studentView", false)) {
-                        displayTeachersNames();
-                    }
-                    loadingDialog.dismiss();
-                }
-            }
-        });
-    }
-
-    private void displayTeachersNames() {
-        try {
-            displayTeachersList = getTeachersNames();
-            if (displayTeachersList != null) {
-                displayChooseDialog(displayTeachersList);
-            } else {
-                Toast.makeText(MainActivity.this, "Няма връзка със сървъра. Моля, опитайте по-късно",
-                        Toast.LENGTH_SHORT).show();
-            }
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-    }
-
-    @NonNull
-    private Dialog createLoadingDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-        builder.setView(R.layout.progress_bar);
-        final Dialog dialog = builder.create();
-        dialog.setCancelable(false);
-        dialog.setCanceledOnTouchOutside(false);
-        dialog.show();
-        return dialog;
     }
 
     private void saveInSharedResponse(String response) {
@@ -383,4 +334,291 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void setAlertDialogSettings(AlertDialog dialog) {
+        dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
+            @Override
+            public void onDismiss(DialogInterface dialog) {
+                isDialogCancelled = true;
+            }
+        });
+        dialog.setOnShowListener(new DialogInterface.OnShowListener() {
+            @Override
+            public void onShow(DialogInterface dialog) {
+                isDialogCancelled = false;
+            }
+        });
+        if (this.sharedPreferences.getBoolean("studentFirstStart", false)
+                && this.sharedPreferences.getBoolean("studentView", false)) {
+            dialog.setTitle("Избери клас");
+            dialog.setCancelable(false);
+        } else if (this.sharedPreferences.getBoolean("teacherFirstStart", false)
+                && !this.sharedPreferences.getBoolean("studentView", false)) {
+            dialog.setTitle("Избери учител");
+            dialog.setCancelable(false);
+        }
+        ListView listView = dialog.getListView();
+        listView.setDivider(new ColorDrawable(Color.parseColor("#D3D3D3")));
+        listView.setDividerHeight(2);
+        //remove last divider
+        listView.setOverscrollFooter(new ColorDrawable(Color.TRANSPARENT));
+    }
+
+    public void takeNamesFromDatabaseAndDisplayThem(String url, final String view) {
+        StringRequest request = new StringRequest(Request.Method.POST, url, new Response.Listener<String>() {
+            @Override
+            public void onResponse(String response) {
+                saveNamesInSharedPreference(response);
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                sharedPreferences.edit().putBoolean("firstrun", true).apply();
+                createNetworkRequireDialog();
+            }
+        }) {
+            @Override
+            protected Map<String, String> getParams() {
+                return MainActivity.this.getParams(view);
+            }
+        };
+        request.setRetryPolicy(new DefaultRetryPolicy(7000,
+                DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
+                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
+        mQueue.add(request);
+        //show the teacher loading dialog and display the teachers on response
+        showNamesListLoadingDialog(view);
+    }
+
+    private void createNetworkRequireDialog() {
+        final AlertDialog dialog = new AlertDialog.Builder(MainActivity.this, android.R.style.Theme_DeviceDefault_Light_NoActionBar_Fullscreen)
+                .setMessage("Приложението изисква интернет връзка. Моля, включете Wi-Fi или мобилни данни.")
+                .setPositiveButton("Продължи", null) //Set to null. We override the onclick
+                .setNegativeButton("Откажи", null)
+                .setCancelable(false)
+                .create();
+        setNetworkRequireOnShowListener(dialog);
+        dialog.show();
+    }
+
+    private void setNetworkRequireOnShowListener(final AlertDialog dialog) {
+        dialog.setOnShowListener(new DialogInterface.OnShowListener() {
+            @Override
+            public void onShow(DialogInterface dialogInterface) {
+                Button posButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+                posButton.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View view) {
+                        if (isNetworkAvailable()) {
+                            dialog.dismiss();
+                            loadChangeSchoolView();
+                        } else {
+                            Toast.makeText(MainActivity.this, "Няма достъп до интернет.", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
+                Button negButton = dialog.getButton(AlertDialog.BUTTON_NEGATIVE);
+                negButton.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        MainActivity.this.finish();
+                    }
+                });
+            }
+        });
+    }
+
+    private Map<String, String> getParams(String view) {
+        //send key to php server to select given table
+        //after that the php server will return a table from the database in JSON format
+        Map<String, String> data = new HashMap<>();
+        //androidSchoolName
+        data.put("androidDatabase", sharedPreferences.getString("databaseName", ""));
+        if (view.equals("school")) {
+            return data;
+        } else if (view.equals("student")) {
+            data.put("grades_or_teachers", "grades");
+        } else {
+            data.put("grades_or_teachers", "teachers");
+        }
+        return data;
+    }
+
+    public void saveNamesInSharedPreference(String response) {
+        //if we are in choose school list we need to store the response in the schools preferences
+        if (this.sharedPreferences.getBoolean("schoolList", true)) {
+            this.sharedPreferences.edit().putString("schools", response).apply();
+        } else if (!this.sharedPreferences.getBoolean("studentView", false)) {
+            //else we are in choose teacher list so we store the response in the teachers preferences
+            this.sharedPreferences.edit().putString("teachers", response).apply();
+        } else {
+            this.sharedPreferences.edit().putString("students", response).apply();
+        }
+    }
+
+    private void showNamesListLoadingDialog(final String view) {
+        final Dialog loadingDialog = requestManager.createLoadingDialog();
+        mQueue.addRequestFinishedListener(new RequestQueue.RequestFinishedListener<String>() {
+            @Override
+            public void onRequestFinished(Request<String> request) {
+                if (loadingDialog.isShowing()) {
+                    //check if we are are in teacher view or school select view and display the names list
+                    displayNames(view);
+                    loadingDialog.dismiss();
+                }
+            }
+        });
+    }
+
+    private void displayNames(String view) {
+        try {
+            if (view.equals("school")) {
+                setSchoolDisplayLists();
+                startChooseSchoolActivity();
+            } else if (view.equals("student")) {
+                setGradesDisplayList();
+                displayChooseGradeDialog();
+            } else {
+                setTeachersDisplayList();
+                displayChooseTeacherDialog();
+
+            }
+        } catch (JSONException e) {
+            Toast.makeText(this, "Грешка при обработването на данните. Моля, опитайте по-късно.", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void setSchoolDisplayLists() throws JSONException {
+        String jsonString = this.sharedPreferences.getString("schools", "");
+        JSONArray array = new JSONArray(jsonString);
+        String name = "school_name";
+        String logoURL = "logo_url";
+        this.displaySchoolList = new String[array.length()];
+        this.displaySchoolLogosURLs = new String[array.length()];
+        for (int i = 0; i < array.length(); i++) {
+            JSONObject jsonObject = array.getJSONObject(i);
+            this.displaySchoolList[i] = jsonObject.getString(name);
+            this.displaySchoolLogosURLs[i] = jsonObject.getString(logoURL);
+        }
+
+    }
+
+    private void setGradesDisplayList() throws JSONException {
+        String jsonString = this.sharedPreferences.getString("students", "");
+        JSONArray array = new JSONArray(jsonString);
+        String name = "grade";
+        this.displayGradesList = new String[array.length()];
+        for (int i = 0; i < array.length(); i++) {
+            JSONObject jsonObject = array.getJSONObject(i);
+            this.displayGradesList[i] = jsonObject.getString(name);
+        }
+        Arrays.sort(this.displayGradesList);
+    }
+
+    private void setTeachersDisplayList() throws JSONException {
+        String jsonString = this.sharedPreferences.getString("teachers", "");
+        JSONArray array = new JSONArray(jsonString);
+        String name = "name";
+        this.displayTeachersList = new String[array.length()];
+        for (int i = 0; i < array.length(); i++) {
+            JSONObject jsonObject = array.getJSONObject(i);
+            this.displayTeachersList[i] = jsonObject.getString(name);
+        }
+        Arrays.sort(this.displayTeachersList);
+    }
+
+    private void displayChooseTeacherDialog() {
+        if (displayTeachersList != null) {
+            displayChooseDialog(displayTeachersList);
+        } else {
+            Toast.makeText(MainActivity.this, "Няма връзка със сървъра. Моля, опитайте по-късно",
+                    Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void displayChooseGradeDialog() {
+        if (displayGradesList != null) {
+            displayChooseDialog(displayGradesList);
+        } else {
+            Toast.makeText(MainActivity.this, "Няма връзка със сървъра. Моля, опитайте по-късно",
+                    Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void startChooseSchoolActivity() {
+        if (displaySchoolList != null && displaySchoolLogosURLs != null) {
+            Intent intent = new Intent(MainActivity.this, FirstLaunch.class);
+            intent.putExtra("school_names", displaySchoolList);
+            intent.putExtra("school_logos", displaySchoolLogosURLs);
+            startActivity(intent);
+        } else {
+            Toast.makeText(MainActivity.this, "Няма връзка със сървъра. Моля, опитайте по-късно",
+                    Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void setSwitchListener() {
+        switchBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                //prevent the button from spamming
+                if (SystemClock.elapsedRealtime() - mLastClickTime < 1000) {
+                    return;
+                }
+                mLastClickTime = SystemClock.elapsedRealtime();
+                //save whether the app is in student or teacher view
+                if (sharedPreferences.getBoolean("studentView", true)) {
+                    sharedPreferences.edit().putBoolean("studentView", false).apply();
+                } else {
+                    sharedPreferences.edit().putBoolean("studentView", true).apply();
+                }
+                //set view with button click set on true
+                setView(sharedPreferences.getBoolean("studentView", true), true);
+            }
+        });
+    }
+
+    private void setChooseListener() {
+        chooseBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                boolean view = sharedPreferences.getBoolean("studentView", false);
+                displayChooseList(view);
+            }
+        });
+    }
+
+    private void displayChooseList(boolean view) {
+        String[] displayList = view ? displayGradesList : displayTeachersList;
+        if (displayList != null) {
+            displayChooseDialog(displayList);
+        } else {
+            //get grades or teachers list from database depending on the current view
+            takeNamesFromDatabaseAndDisplayThem(GET_TEACHERS_OR_GRADES_NAMES, view ? "student" : "teacher");
+        }
+    }
+
+    private void setChangeSchoolListener() {
+        changeSchool.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (isNetworkAvailable()) {
+                    loadChangeSchoolView();
+                    sharedPreferences.edit().putBoolean("studentFirstStart", true).apply();
+                    sharedPreferences.edit().putBoolean("teacherFirstStart", true).apply();
+                } else {
+                    Toast.makeText(MainActivity.this, "Няма достъп до интернет.", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+    }
+
+    private void setShowTimetableListener() {
+        showTimetableBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(MainActivity.this, Timetable.class);
+                startActivity(intent);
+            }
+        });
+    }
 }
