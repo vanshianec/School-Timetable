@@ -1,6 +1,7 @@
 package com.example.ivani.schoolscheduleonline;
 
 import android.app.Dialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -9,6 +10,8 @@ import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.TransitionDrawable;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -38,6 +41,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -92,6 +96,13 @@ public class MainActivity extends AppCompatActivity {
         setSwitchListener();
     }
 
+    private boolean isNetworkAvailable() {
+        ConnectivityManager connectivityManager
+                = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+        return activeNetworkInfo != null && activeNetworkInfo.isConnected();
+    }
+
     @Override
     public void onSaveInstanceState(Bundle bundle) {
         super.onSaveInstanceState(bundle);
@@ -103,6 +114,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
+        //dismiss dialog (mainly on screen rotation) so we can use it again when the view changes
         if (this.chooseDialog != null) {
             if (this.chooseDialog.isShowing()) {
                 this.chooseDialog.dismiss();
@@ -121,9 +133,16 @@ public class MainActivity extends AppCompatActivity {
         if (firstTimeLaunch()) {
             //the app is launching for the first time
             // using the following line to edit/commit prefs
-            this.sharedPreferences.edit().putBoolean("firstrun", false).apply();
             //if the app is launching for the first time we have to display the choose school list
             loadChangeSchoolView();
+        } else if (this.sharedPreferences.getBoolean("studentFirstStart", false)
+                && this.sharedPreferences.getBoolean("studentView", false)) {
+            //pass true in setView means that the grades will be displayed
+            setView(true, false);
+        } else if (this.sharedPreferences.getBoolean("teacherFirstStart", false)
+                && !this.sharedPreferences.getBoolean("studentView", false)) {
+            //pass false in setView means that the teachers will be displayed
+            setView(false, false);
         } else {
             setView(this.sharedPreferences.getBoolean("studentView", true), false);
         }
@@ -150,6 +169,9 @@ public class MainActivity extends AppCompatActivity {
             if (buttonClick) {
                 transitionDrawable.reverseTransition(1000);
             }
+            if (this.sharedPreferences.getBoolean("studentFirstStart", false)) {
+                displayChooseList(true);
+            }
         }
         //else we set the view in teacherView
         else {
@@ -160,6 +182,9 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 //since there is no button click that means the app was closed in teacher view so we instantly start the transition
                 transitionDrawable.startTransition(0);
+            }
+            if (this.sharedPreferences.getBoolean("teacherFirstStart", false)) {
+                displayChooseList(false);
             }
         }
     }
@@ -255,13 +280,13 @@ public class MainActivity extends AppCompatActivity {
                 new Response.Listener<String>() {
                     @Override
                     public void onResponse(String response) {
-                        //save result from database in shared preferences
-                        saveInSharedResponse(response);
+                        manageGradeOrTeacherResponse(response);
                     }
                 }, new Response.ErrorListener() { //Create an error listener to handle errors appropriately.
             @Override
             public void onErrorResponse(VolleyError error) {
                 errorManager.displayErrorMessage(error);
+                finish();
             }
         }) {
             @Override
@@ -280,6 +305,25 @@ public class MainActivity extends AppCompatActivity {
                 DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
         mQueue.add(request);
         requestManager.showLoadingDialogUntilResponse(mQueue);
+    }
+
+    private void manageGradeOrTeacherResponse(String response) {
+        //check if response contains sql error message
+        if (response.toLowerCase().contains("error")) {
+            Toast.makeText(MainActivity.this, "Грешка при обработването на данните. Моля, опитайте по-късно"
+                    , Toast.LENGTH_SHORT).show();
+            finish();
+        } else {
+            //save result from database in shared preferences
+            saveInSharedResponse(response);
+            if (sharedPreferences.getBoolean("studentFirstStart", false)
+                    && sharedPreferences.getBoolean("studentView", false)) {
+                sharedPreferences.edit().putBoolean("studentFirstStart", false).apply();
+            } else if (sharedPreferences.getBoolean("teacherFirstStart", false)
+                    && !sharedPreferences.getBoolean("studentView", false)) {
+                sharedPreferences.edit().putBoolean("teacherFirstStart", false).apply();
+            }
+        }
     }
 
     private void saveInSharedResponse(String response) {
@@ -303,6 +347,15 @@ public class MainActivity extends AppCompatActivity {
                 isDialogCancelled = false;
             }
         });
+        if (this.sharedPreferences.getBoolean("studentFirstStart", false)
+                && this.sharedPreferences.getBoolean("studentView", false)) {
+            dialog.setTitle("Избери клас");
+            dialog.setCancelable(false);
+        } else if (this.sharedPreferences.getBoolean("teacherFirstStart", false)
+                && !this.sharedPreferences.getBoolean("studentView", false)) {
+            dialog.setTitle("Избери учител");
+            dialog.setCancelable(false);
+        }
         ListView listView = dialog.getListView();
         listView.setDivider(new ColorDrawable(Color.parseColor("#D3D3D3")));
         listView.setDividerHeight(2);
@@ -319,7 +372,8 @@ public class MainActivity extends AppCompatActivity {
         }, new Response.ErrorListener() {
             @Override
             public void onErrorResponse(VolleyError error) {
-                errorManager.displayErrorMessage(error);
+                sharedPreferences.edit().putBoolean("firstrun", true).apply();
+                createNetworkRequireDialog();
             }
         }) {
             @Override
@@ -333,6 +387,44 @@ public class MainActivity extends AppCompatActivity {
         mQueue.add(request);
         //show the teacher loading dialog and display the teachers on response
         showNamesListLoadingDialog(view);
+    }
+
+    private void createNetworkRequireDialog() {
+        final AlertDialog dialog = new AlertDialog.Builder(MainActivity.this, android.R.style.Theme_DeviceDefault_Light_NoActionBar_Fullscreen)
+                .setMessage("Приложението изисква интернет връзка. Моля, включете Wi-Fi или мобилни данни.")
+                .setPositiveButton("Продължи", null) //Set to null. We override the onclick
+                .setNegativeButton("Откажи", null)
+                .setCancelable(false)
+                .create();
+        setNetworkRequireOnShowListener(dialog);
+        dialog.show();
+    }
+
+    private void setNetworkRequireOnShowListener(final AlertDialog dialog) {
+        dialog.setOnShowListener(new DialogInterface.OnShowListener() {
+            @Override
+            public void onShow(DialogInterface dialogInterface) {
+                Button posButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+                posButton.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View view) {
+                        if (isNetworkAvailable()) {
+                            dialog.dismiss();
+                            loadChangeSchoolView();
+                        } else {
+                            Toast.makeText(MainActivity.this, "Няма достъп до интернет.", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
+                Button negButton = dialog.getButton(AlertDialog.BUTTON_NEGATIVE);
+                negButton.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        MainActivity.this.finish();
+                    }
+                });
+            }
+        });
     }
 
     private Map<String, String> getParams(String view) {
@@ -419,6 +511,7 @@ public class MainActivity extends AppCompatActivity {
             JSONObject jsonObject = array.getJSONObject(i);
             this.displayGradesList[i] = jsonObject.getString(name);
         }
+        Arrays.sort(this.displayGradesList);
     }
 
     private void setTeachersDisplayList() throws JSONException {
@@ -430,6 +523,7 @@ public class MainActivity extends AppCompatActivity {
             JSONObject jsonObject = array.getJSONObject(i);
             this.displayTeachersList[i] = jsonObject.getString(name);
         }
+        Arrays.sort(this.displayTeachersList);
     }
 
     private void displayChooseTeacherDialog() {
@@ -488,22 +582,32 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 boolean view = sharedPreferences.getBoolean("studentView", false);
-                String[] displayList = view ? displayGradesList : displayTeachersList;
-                if (displayList != null) {
-                    displayChooseDialog(displayList);
-                } else {
-                    //get grades or teachers list from database depending on the current view
-                    takeNamesFromDatabaseAndDisplayThem(GET_TEACHERS_OR_GRADES_NAMES, view ? "student" : "teacher");
-                }
+                displayChooseList(view);
             }
         });
+    }
+
+    private void displayChooseList(boolean view) {
+        String[] displayList = view ? displayGradesList : displayTeachersList;
+        if (displayList != null) {
+            displayChooseDialog(displayList);
+        } else {
+            //get grades or teachers list from database depending on the current view
+            takeNamesFromDatabaseAndDisplayThem(GET_TEACHERS_OR_GRADES_NAMES, view ? "student" : "teacher");
+        }
     }
 
     private void setChangeSchoolListener() {
         changeSchool.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                loadChangeSchoolView();
+                if (isNetworkAvailable()) {
+                    loadChangeSchoolView();
+                    sharedPreferences.edit().putBoolean("studentFirstStart", true).apply();
+                    sharedPreferences.edit().putBoolean("teacherFirstStart", true).apply();
+                } else {
+                    Toast.makeText(MainActivity.this, "Няма достъп до интернет.", Toast.LENGTH_SHORT).show();
+                }
             }
         });
     }

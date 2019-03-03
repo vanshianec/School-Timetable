@@ -2,12 +2,15 @@ package com.example.ivani.schoolscheduleonline;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.preference.PreferenceManager;
+import android.provider.Settings;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.MotionEvent;
@@ -71,6 +74,15 @@ public class FirstLaunch extends AppCompatActivity {
         setOnItemClickListener(this.editText);
         setOnClickListener(schoolNames, this.editText);
         checkIfSuggestionsIsShowing(savedInstanceState);
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (this.sharedPreferences.getBoolean("firstrun", true)) {
+            moveTaskToBack(true);
+        } else {
+            super.onBackPressed();
+        }
     }
 
     @Override
@@ -157,7 +169,7 @@ public class FirstLaunch extends AppCompatActivity {
                 sharedPreferences.edit().putBoolean("studentView", view).apply();
                 Intent intent = new Intent(FirstLaunch.this, MainActivity.class);
                 intent.putExtra("BitmapLogo", schoolItems.get(getIndex(schoolItems, schoolName)).getSchoolImage());
-                takeSelectedTableFromDatabase(schoolName, intent);
+                getSchoolDatabaseNamesFromDatabase(schoolName, intent);
             }
         }
     }
@@ -171,7 +183,7 @@ public class FirstLaunch extends AppCompatActivity {
         return 0;
     }
 
-    public void takeSelectedTableFromDatabase(final String value, final Intent intent) {
+    public void getSchoolDatabaseNamesFromDatabase(final String value, final Intent intent) {
         //send request to the database
         String url = "https://schooltimetable.site/get_database_name.php";
         StringRequest request = new StringRequest(Request.Method.POST, url,
@@ -180,9 +192,14 @@ public class FirstLaunch extends AppCompatActivity {
                     public void onResponse(String response) {
                         sharedPreferences.edit().putString("databaseName", response).apply();
                         sharedPreferences.edit().putBoolean("schoolList", false).apply();
+                        if (sharedPreferences.getBoolean("firstrun", true)) {
+                            sharedPreferences.edit().putBoolean("firstrun", false).apply();
+                            sharedPreferences.edit().putBoolean("studentFirstStart", true).apply();
+                            sharedPreferences.edit().putBoolean("teacherFirstStart", true).apply();
+                        }
                         startActivity(intent);
                     }
-                }, new Response.ErrorListener() { //Create an error listener to handle errors appropriately.
+                }, new Response.ErrorListener() {
             @Override
             public void onErrorResponse(VolleyError error) {
                 errorManager.displayErrorMessage(error);
@@ -205,10 +222,22 @@ public class FirstLaunch extends AppCompatActivity {
         requestManager.showLoadingDialogUntilResponse(mQueue);
     }
 
-    //TODO SEE THIS SUPPRESS
-    @SuppressLint("StaticFieldLeak")
     private void setSchoolItems(String[] schoolNames, String[] schoolLogos) {
         this.schoolItems = new ArrayList<>();
+        List<Bitmap> logos = getLogosFromDatabase(schoolLogos);
+        int counter = 0;
+        if (logos != null) {
+            for (Bitmap logo : logos) {
+                this.schoolItems.add(new SchoolItem(schoolNames[counter], logo));
+                counter++;
+            }
+        } else {
+            Toast.makeText(this, "Грешка при обработването на данните. Моля, опитайте по-късно.", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @SuppressLint("StaticFieldLeak")
+    private List<Bitmap> getLogosFromDatabase(String[] schoolLogos) {
         List<Bitmap> logos = null;
         try {
             logos = new AsyncTask<String[], Void, List<Bitmap>>() {
@@ -221,31 +250,25 @@ public class FirstLaunch extends AppCompatActivity {
                         }
                         return bitmaps;
                     } catch (InterruptedException e) {
+                        Toast.makeText(FirstLaunch.this, "Грешка при свързването със сървъра. Моля, опитайте по-късно.", Toast.LENGTH_SHORT).show();
                         e.printStackTrace();
                     } catch (ExecutionException e) {
+                        Toast.makeText(FirstLaunch.this, "Грешка при свързването със сървъра. Моля, опитайте по-късно.", Toast.LENGTH_SHORT).show();
                         e.printStackTrace();
                     }
                     return null;
                 }
             }.execute(schoolLogos).get(7000, TimeUnit.MILLISECONDS);
         } catch (ExecutionException e) {
-            //TODO
+            Toast.makeText(this, "Грешка при свързването със сървъра. Моля, опитайте по-късно.", Toast.LENGTH_SHORT).show();
             e.printStackTrace();
         } catch (InterruptedException e) {
-            //TODO
+            Toast.makeText(this, "Грешка при свързването със сървъра. Моля, опитайте по-късно.", Toast.LENGTH_SHORT).show();
             e.printStackTrace();
         } catch (TimeoutException e) {
-            //TODO
+            Toast.makeText(this, "Времето за свързване изтече. Моля, проверете връзката си или опитайте по-късно.", Toast.LENGTH_SHORT).show();
             e.printStackTrace();
         }
-        int counter = 0;
-        if (logos != null) {
-            for (Bitmap logo : logos) {
-                this.schoolItems.add(new SchoolItem(schoolNames[counter], logo));
-                counter++;
-            }
-        } else {
-            //TODO ADD ERROR
-        }
+        return logos;
     }
 }
