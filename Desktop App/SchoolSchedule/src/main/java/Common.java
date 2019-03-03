@@ -47,8 +47,7 @@ public abstract class Common {
             this.roomsColumnEndIndex = endIndex;
         }
     }
-
-    //TODO FIX E
+    //TODO REMOVE LETTER
     protected String getGrade(String grade) {
         //in the excel table the grade '11e' contains english letter 'e' so we return it with bulgarian letter 'e'
         return grade.equals(ENGLISH_TEXT_GRADE) ? "11е" : grade;

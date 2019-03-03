@@ -1,3 +1,4 @@
+import javax.net.ssl.HttpsURLConnection;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
@@ -10,12 +11,13 @@ import java.io.Reader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.security.Security;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class SchoolRegistration {
 
-    private static final String URL = "https://timetabletest.000webhostapp.com/add_school.php";
+    private static final String URL = "https://schooltimetable.site/add_school_admin.php";
     private JFrame jFrame;
     private JTextField schoolNameText;
     private JTextField schoolUsernameText;
@@ -96,17 +98,19 @@ public class SchoolRegistration {
     }
 
     private void addSchoolToDatabase() {
-        String name = schoolNameText.getText();
-        String username = schoolUsernameText.getText();
-        String password = schoolPasswordText.getText();
-        String databaseName = schoolDatabaseText.getText();
-        manageConnection(name, username, password, databaseName);
+        String name = schoolNameText.getText().trim();
+        String username = schoolUsernameText.getText().trim();
+        String password = schoolPasswordText.getText().trim();
+        String databaseName = schoolDatabaseText.getText().trim();
+        String logoURLFormat = "https://schooltimetable.site/school_logos/%s.png";
+        String logoURL = String.format(logoURLFormat, username);
+        manageConnection(name, username, password, databaseName, logoURL);
     }
 
-    private void manageConnection(String name, String username, String password, String databaseName) {
+    private void manageConnection(String name, String username, String password, String databaseName, String logoURL) {
         String result = "";
         try {
-            result = setUpConnection(name, username, password, databaseName);
+            result = setUpConnection(name, username, password, databaseName, logoURL);
         } catch (IOException e) {
             JOptionPane.showMessageDialog(this.jFrame, "Възникна проблем при свързването. Моля, опитайте по - късно"
                     , "Connection Error", JOptionPane.ERROR_MESSAGE);
@@ -115,19 +119,21 @@ public class SchoolRegistration {
         if (result.contains("успешно")) {
             JOptionPane.showMessageDialog(this.jFrame, result,
                     "School Added", JOptionPane.INFORMATION_MESSAGE);
-        } else {
-            JOptionPane.showMessageDialog(this.jFrame, result,
-                    "Connection Error", JOptionPane.ERROR_MESSAGE);
+        }
+        else{
+            JOptionPane.showMessageDialog(this.jFrame,result,"Connection Error",JOptionPane.ERROR_MESSAGE);
         }
     }
 
-    private String setUpConnection(String name, String username, String password, String databaseName) throws IOException {
+    private String setUpConnection(String name, String username, String password, String databaseName, String logoURL) throws IOException {
+
         URL u = new URL(SchoolRegistration.URL);
         Map<String, Object> params = new LinkedHashMap<>();
         params.put("name", name);
         params.put("username", username);
         params.put("password", password);
         params.put("db_name", databaseName);
+        params.put("logo_url", logoURL);
         StringBuilder postData = new StringBuilder();
         for (Map.Entry<String, Object> param : params.entrySet()) {
             if (postData.length() != 0) {
@@ -150,6 +156,7 @@ public class SchoolRegistration {
         for (int c; (c = in.read()) >= 0; ) {
             sb.append((char) c);
         }
+        conn.getInputStream().close();
         return sb.toString();
     }
 

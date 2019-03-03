@@ -1,7 +1,5 @@
 package main.java;
 
-import main.java.GradesAndRoomsManager;
-import main.java.TeachersManager;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -13,13 +11,13 @@ import java.util.Map;
 import static Constants.Constants.*;
 
 public class DatabaseManager {
-    private static final String UPDATE_DATABASE_SERVER_URL = "https://liverpoolynwa.000webhostapp.com/update_data.php";
-    private static final String GET_TEACHERS_SERVER_URL = "https://liverpoolynwa.000webhostapp.com/get_teachers.php";
+    private static final String UPDATE_DATABASE_SERVER_URL = "https://schooltimetable.site/update_school_database.php";
+    private static final String GET_TEACHERS_SERVER_URL = "https://schooltimetable.site/get_teachers.php";
 
     private GradesAndRoomsManager gradesAndRoomsManager;
     private TeachersManager teachersManager;
     private StringBuilder queryStringBuilder;
-    private Map<Integer, String> teacherIdAndName;
+    private Map<Integer, String> teacherIdAndNameDatabase;
     private String username;
     private String password;
     private String databaseName;
@@ -32,22 +30,68 @@ public class DatabaseManager {
         this.password = password;
         this.databaseName = databaseName;
         this.queryStringBuilder = new StringBuilder();
-        this.teacherIdAndName = new LinkedHashMap<>();
-        this.setTeacherIdAndName();
+        this.teacherIdAndNameDatabase = new LinkedHashMap<>();
+        this.addCreateMissingTablesQuery();
+        this.addTeacherUpdates();
+        this.updateDatabaseTables();
     }
 
-    public Map<Integer, String> getTeacherIdAndName() {
-        return teacherIdAndName;
+    private void addCreateMissingTablesQuery() {
+        this.queryStringBuilder.append(TEACHER_CREATE_TABLE_IF_NOT_EXISTS);
+        Map<String, Integer> grades = gradesAndRoomsManager.getGradesShift();
+        grades.keySet().forEach(grade -> this.queryStringBuilder
+                .append(String.format(GRADE_CREATE_TABLE_IF_NOT_EXISTS_QUERY, grade.trim())));
+        this.queryStringBuilder.append(GRADE_CREATE_TABLE_IF_NOT_EXISTS);
+        grades.keySet().forEach(grade -> this.queryStringBuilder.append(String.format(INSERT_GRADE_QUERY, grade)));
     }
 
-    private void setTeacherIdAndName() throws IOException {
+    private void addTeacherUpdates() throws IOException {
         //get teachers data from database
         String jsonString = setUpConnection(GET_TEACHERS_SERVER_URL, "teacher", "teachers");
         //read the returned json from the database and add its values in teacherIdAndName variable
-        readJSON(jsonString);
+
+        if (!(jsonString.isEmpty() || jsonString.toLowerCase().contains("error"))) {
+            readJSON(jsonString);
+        }
+        //get the teacher id and name data from the excel table so we can compare it with the data from the database
+        Map<Integer, String> teacherIdAndNameExcel = teachersManager.getTeacherIdAndName();
+        compareTeacherIdAndName(this.teacherIdAndNameDatabase, teacherIdAndNameExcel);
+    }
+
+    private void compareTeacherIdAndName(Map<Integer, String> teacherIdAndNameDatabase, Map<Integer, String> teacherIdAndNameExcel) {
+        int length = Math.max(teacherIdAndNameDatabase.size(), teacherIdAndNameExcel.size());
+
+        for (int teacherId = 1; teacherId <= length; teacherId++) {
+            if (!teacherIdAndNameDatabase.containsKey(teacherId)) {
+                this.queryStringBuilder.append(String.format("INSERT INTO `teachers` (`teacher_id`, `name`, `subject`) VALUES ('%d', '%s', '%s');"
+                        , teacherId, teacherIdAndNameExcel.get(teacherId), ""));
+                this.queryStringBuilder.append(String.format(TEACHER_CREATE_TABLE_QUERY, teacherId));
+            } else if (!teacherIdAndNameExcel.containsKey(teacherId)) {
+                this.queryStringBuilder.append(String.format("DELETE FROM `teachers` WHERE `teachers`.`teacher_id` = %d;", teacherId));
+                this.queryStringBuilder.append(String.format("DROP TABLE `%d`;", teacherId));
+            } else if (!teacherIdAndNameDatabase.get(teacherId).equals(teacherIdAndNameExcel.get(teacherId))) {
+                this.queryStringBuilder.append(String.format("UPDATE `teachers` SET `name` = '%s' WHERE `teachers`.`teacher_id` = %d;"
+                        , teacherIdAndNameExcel.get(teacherId), teacherId));
+            }
+        }
+    }
+
+    private void updateDatabaseTables() throws IOException {
+        setUpConnection(UPDATE_DATABASE_SERVER_URL, "query", this.queryStringBuilder.toString());
+        this.queryStringBuilder.setLength(0);
+    }
+
+    private void getUpdatedTeachers() throws IOException {
+        //get teachers data from database
+        String jsonString = setUpConnection(GET_TEACHERS_SERVER_URL, "teacher", "teachers");
+        //read the returned json from the database and add its values in teacherIdAndName variable
+        if (!(jsonString.isEmpty() || jsonString.toLowerCase().contains("error"))) {
+            readJSON(jsonString);
+        }
     }
 
     public void updateDatabase() throws IOException {
+        getUpdatedTeachers();
         //add query to update the shifts of the grades
         addQueryShifts();
         //add query to update the rooms and teachers
@@ -96,7 +140,11 @@ public class DatabaseManager {
             for (int i = 1; i < 15; i++) {
                 String mondayGrade = "";
                 int mondayRoom = 0;
-                if (mondayGrades.containsKey(teacherId) && mondayRooms.containsKey(teacherId)) {
+                if (mondayGrades.containsKey(teacherId) && mondayRooms.isEmpty()) {
+                    if (mondayGrades.get(teacherId).containsKey(i)) {
+                        mondayGrade = mondayGrades.get(teacherId).get(i);
+                    }
+                } else if (mondayGrades.containsKey(teacherId) && mondayRooms.containsKey(teacherId)) {
                     if (mondayGrades.get(teacherId).containsKey(i) && mondayRooms.get(teacherId).containsKey(i)) {
                         mondayGrade = mondayGrades.get(teacherId).get(i);
                         mondayRoom = mondayRooms.get(teacherId).get(i);
@@ -104,7 +152,11 @@ public class DatabaseManager {
                 }
                 String tuesdayGrade = "";
                 int tuesdayRoom = 0;
-                if (tuesdayGrades.containsKey(teacherId) && tuesdayRooms.containsKey(teacherId)) {
+                if (tuesdayGrades.containsKey(teacherId) && tuesdayRooms.isEmpty()) {
+                    if (tuesdayGrades.get(teacherId).containsKey(i)) {
+                        tuesdayGrade = tuesdayGrades.get(teacherId).get(i);
+                    }
+                } else if (tuesdayGrades.containsKey(teacherId) && tuesdayRooms.containsKey(teacherId)) {
                     if (tuesdayGrades.get(teacherId).containsKey(i) && tuesdayRooms.get(teacherId).containsKey(i)) {
                         tuesdayGrade = tuesdayGrades.get(teacherId).get(i);
                         tuesdayRoom = tuesdayRooms.get(teacherId).get(i);
@@ -112,7 +164,11 @@ public class DatabaseManager {
                 }
                 String wednesdayGrade = "";
                 int wednesdayRoom = 0;
-                if (wednesdayGrades.containsKey(teacherId) && wednesdayRooms.containsKey(teacherId)) {
+                if (wednesdayGrades.containsKey(teacherId) && wednesdayRooms.isEmpty()) {
+                    if (wednesdayGrades.get(teacherId).containsKey(i)) {
+                        wednesdayGrade = wednesdayGrades.get(teacherId).get(i);
+                    }
+                } else if (wednesdayGrades.containsKey(teacherId) && wednesdayRooms.containsKey(teacherId)) {
                     if (wednesdayGrades.get(teacherId).containsKey(i) && wednesdayRooms.get(teacherId).containsKey(i)) {
                         wednesdayGrade = wednesdayGrades.get(teacherId).get(i);
                         wednesdayRoom = wednesdayRooms.get(teacherId).get(i);
@@ -120,7 +176,11 @@ public class DatabaseManager {
                 }
                 String thursdayGrade = "";
                 int thursdayRoom = 0;
-                if (thursdayGrades.containsKey(teacherId) && thursdayRooms.containsKey(teacherId)) {
+                if (thursdayGrades.containsKey(teacherId) && thursdayRooms.isEmpty()) {
+                    if (thursdayGrades.get(teacherId).containsKey(i)) {
+                        thursdayGrade = thursdayGrades.get(teacherId).get(i);
+                    }
+                } else if (thursdayGrades.containsKey(teacherId) && thursdayRooms.containsKey(teacherId)) {
                     if (thursdayGrades.get(teacherId).containsKey(i) && thursdayRooms.get(teacherId).containsKey(i)) {
                         thursdayGrade = thursdayGrades.get(teacherId).get(i);
                         thursdayRoom = thursdayRooms.get(teacherId).get(i);
@@ -128,7 +188,11 @@ public class DatabaseManager {
                 }
                 String fridayGrade = "";
                 int fridayRoom = 0;
-                if (fridayGrades.containsKey(teacherId) && fridayRooms.containsKey(teacherId)) {
+                if (fridayGrades.containsKey(teacherId) && fridayRooms.isEmpty()) {
+                    if (fridayGrades.get(teacherId).containsKey(i)) {
+                        fridayGrade = fridayGrades.get(teacherId).get(i);
+                    }
+                } else if (fridayGrades.containsKey(teacherId) && fridayRooms.containsKey(teacherId)) {
                     if (fridayGrades.get(teacherId).containsKey(i) && fridayRooms.get(teacherId).containsKey(i)) {
                         fridayGrade = fridayGrades.get(teacherId).get(i);
                         fridayRoom = fridayRooms.get(teacherId).get(i);
@@ -193,7 +257,7 @@ public class DatabaseManager {
                                          Map<String, Map<Integer, String>> thursdayGrades,
                                          Map<String, Map<Integer, String>> fridayGrades) {
         //iterate over the grades
-        for (String grade : mondayRooms.keySet()) {
+        for (String grade : mondayGrades.keySet()) {
             for (int order = 0; order < 8; order++) {
                 String mondayRoomValue = getValue(mondayRooms, grade, order);
                 String tuesdayRoomValue = getValue(tuesdayRooms, grade, order);
@@ -220,8 +284,10 @@ public class DatabaseManager {
     }
 
     private String getValue(Map<String, Map<Integer, String>> day, String grade, int order) {
-        if (day.get(grade).containsKey(order)) {
-            return day.get(grade).get(order);
+        if (day != null && day.size() > 0) {
+            if (day.get(grade).containsKey(order)) {
+                return day.get(grade).get(order);
+            }
         }
         return "";
     }
@@ -242,12 +308,12 @@ public class DatabaseManager {
                     //set two teacher ids to two names
                     int firstId = Integer.parseInt(teacherIdArray[0]);
                     int secondId = Integer.parseInt(teacherIdArray[1]);
-                    teacherName = this.teacherIdAndName.get(firstId) + "/" + this.teacherIdAndName.get(secondId);
+                    teacherName = this.teacherIdAndNameDatabase.get(firstId) + "/" + this.teacherIdAndNameDatabase.get(secondId);
                 } else if (teacherIdArray.length == 1) {
                     //set id to name
-                    teacherName = this.teacherIdAndName.get(Integer.parseInt(teacherId.trim()));
+                    teacherName = this.teacherIdAndNameDatabase.get(Integer.parseInt(teacherId.trim()));
                 }
-                //put set value to teacher name
+                //set value to teacher name
                 innerEntry.setValue(teacherName.trim());
             }
             dayGrades.replace(key, orderTeacherId);
@@ -262,29 +328,7 @@ public class DatabaseManager {
         params.put("username", this.username);
         params.put("password", this.password);
         params.put("database", this.databaseName);
-        StringBuilder postData = new StringBuilder();
-        for (Map.Entry<String, Object> param : params.entrySet()) {
-            if (postData.length() != 0) {
-                postData.append('&');
-            }
-            postData.append(URLEncoder.encode(param.getKey(), "UTF-8"));
-            postData.append('=');
-            postData.append(URLEncoder.encode(String.valueOf(param.getValue()), "UTF-8"));
-        }
-        byte[] postDataBytes = postData.toString().getBytes("UTF-8");
-
-        HttpURLConnection conn = (HttpURLConnection) u.openConnection();
-        conn.setRequestMethod("POST");
-        conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-        conn.setRequestProperty("Content-Length", String.valueOf(postDataBytes.length));
-        conn.setDoOutput(true);
-        conn.getOutputStream().write(postDataBytes);
-        Reader in = new BufferedReader(new InputStreamReader(conn.getInputStream(), "UTF-8"));
-        StringBuilder sb = new StringBuilder();
-        for (int c; (c = in.read()) >= 0; ) {
-            sb.append((char) c);
-        }
-        return sb.toString();
+        return DatabaseWriter.setUpConnection(u, params);
     }
 
     private void readJSON(String jsonString) {
@@ -294,7 +338,7 @@ public class DatabaseManager {
             JSONObject jsonObject = array.getJSONObject(i);
             int teacherId = jsonObject.getInt("teacher_id");
             String name = jsonObject.getString("name");
-            this.teacherIdAndName.put(teacherId, name);
+            this.teacherIdAndNameDatabase.put(teacherId, name);
         }
     }
 }

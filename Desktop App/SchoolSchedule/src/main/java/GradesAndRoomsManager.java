@@ -47,7 +47,6 @@ public class GradesAndRoomsManager extends Common {
         for (int i = 0; i < indices.length; i++) {
             setSortedGradesAndRooms(workbook, indices[i]);
         }
-
     }
 
     private void setSortedGradesAndRooms(Workbook workbook, int index) {
@@ -150,8 +149,6 @@ public class GradesAndRoomsManager extends Common {
             integerStringMap.put(order, teacherId);
         }
     }
-
-
 
     private void setRoomsResult() {
         this.mondayRooms = getSortedRooms(mondayGrades, mondayFirstShiftRooms, mondaySecondShiftRooms);

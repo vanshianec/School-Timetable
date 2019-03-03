@@ -1,8 +1,6 @@
 package main.java;
 
-import org.apache.poi.ss.usermodel.DataFormatter;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.*;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -22,9 +20,8 @@ public class TeachersManager extends Common {
     private Map<Integer, Map<Integer, Integer>> wednesdayRooms;
     private Map<Integer, Map<Integer, Integer>> thursdayRooms;
     private Map<Integer, Map<Integer, Integer>> fridayRooms;
-
     //TODO ADD TEACHER ID AND SUBJECT
-    private Map<Integer,String> teacherIdAndName;
+    private Map<Integer, String> teacherIdAndName;
 
     public Map<Integer, Map<Integer, String>> getMondayGrades() {
         return mondayGrades;
@@ -47,13 +44,37 @@ public class TeachersManager extends Common {
     }
 
     public TeachersManager(Workbook workbook, int[] indices) {
+        this.teacherIdAndName = new LinkedHashMap<>();
         super.setGradesShift(workbook);
         setTeachers(workbook, indices);
+        setTeacherIdAndName(workbook);
     }
 
     private void setTeachers(Workbook workbook, int[] indices) {
         for (int i = 0; i < indices.length; i++) {
             setSortedTeachers(workbook, indices[i]);
+        }
+    }
+
+    public Map<Integer, String> getTeacherIdAndName() {
+        return teacherIdAndName;
+    }
+
+    private void setTeacherIdAndName(Workbook workbook) {
+        Sheet sheet = workbook.getSheetAt(9);
+        int row = TEACHER_DATA_START_ROW;
+        Cell cell = sheet.getRow(row).getCell(TEACHER_ID_COLUMN);
+        while (cell.getCellType() != CellType.BLANK) {
+            int teacherId = Integer.parseInt(new DataFormatter().formatCellValue(sheet.getRow(row).getCell(TEACHER_ID_COLUMN)));
+            String teacherName = new DataFormatter().formatCellValue(sheet.getRow(row).getCell(TEACHER_NAME_COLUMN));
+            //TODO SUBJECT
+            teacherIdAndName.put(teacherId, teacherName);
+            row++;
+            if (sheet.getRow(row) == null) {
+                //the row is empty
+                break;
+            }
+            cell = sheet.getRow(row).getCell(TEACHER_ID_COLUMN);
         }
     }
 
@@ -89,9 +110,6 @@ public class TeachersManager extends Common {
                 break;
             case 7:
                 this.fridayRooms = sortRooms(sheet, FRIDAY_ROOM_FIRST_SHIFT_END_INDEX, FRIDAY_ROOM_SECOND_SHIFT_START_INDEX, FRIDAY_ROOM_SECOND_SHIFT_END_INDEX);
-            case 9:
-               // this.teacherIdAndName =
-               // break;
         }
     }
 
@@ -146,7 +164,7 @@ public class TeachersManager extends Common {
         int orderValue = Integer.parseInt(new DataFormatter().formatCellValue(sheet.getRow(row).getCell(ORDER_COLUMN_START_INDEX)));
         String grade = new DataFormatter().formatCellValue(sheet.getRow(ROW_START_INDEX).getCell(column));
         grade = super.getGrade(grade);
-        int order = super.getGradesShift().get(grade) == 1 ? orderValue : orderValue + 8;
+        int order = super.getGradesShift().get(grade) == 1 ? orderValue : orderValue + 7;
         sortedGrades.get(teacherId).put(order, grade);
         return sortedGrades;
     }
@@ -177,7 +195,7 @@ public class TeachersManager extends Common {
         for (int i = ROW_START_INDEX + 2; i < endIndex; i++) {
             addSortedRooms(sheet, sortedRooms, orderAdderBasedOnShift, i, ROW_START_INDEX);
         }
-        orderAdderBasedOnShift = 8;
+        orderAdderBasedOnShift = 7;
         for (int i = secondShiftStartIndex + 2; i < secondShiftEndIndex; i++) {
             addSortedRooms(sheet, sortedRooms, orderAdderBasedOnShift, i, secondShiftStartIndex);
         }
