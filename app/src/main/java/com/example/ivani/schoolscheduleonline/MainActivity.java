@@ -483,7 +483,7 @@ public class MainActivity extends AppCompatActivity {
 
             }
         } catch (JSONException e) {
-            //TODO TOAST ERRRO !!;
+            Toast.makeText(this, "Грешка при обработването на данните. Моля, опитайте по-късно.", Toast.LENGTH_SHORT).show();
         }
     }
 
