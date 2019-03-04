@@ -43,6 +43,7 @@ import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -54,6 +55,7 @@ public class MainActivity extends AppCompatActivity {
     private String[] displaySchoolList;
     private String[] displaySchoolLogosURLs;
     private String[] displayTeachersList;
+    private String[] originalTeachersList;
     private String[] displayGradesList;
     private RequestManager requestManager;
     private ErrorManager errorManager;
@@ -104,6 +106,7 @@ public class MainActivity extends AppCompatActivity {
         bundle.putBoolean("isDialogCancelled", isDialogCancelled);
         bundle.putStringArray("gradesList", displayGradesList);
         bundle.putStringArray("teachersList", displayTeachersList);
+        bundle.putStringArray("originalTeachersList", originalTeachersList);
     }
 
     @Override
@@ -355,7 +358,22 @@ public class MainActivity extends AppCompatActivity {
             JSONObject jsonObject = array.getJSONObject(i);
             this.displayGradesList[i] = jsonObject.getString(name);
         }
-        Arrays.sort(this.displayGradesList);
+        sortGrades();
+    }
+
+    private void sortGrades() {
+        Comparator comparator = new Comparator<String>() {
+            @Override
+            public int compare(String s1, String s2) {
+                //example strings s1 = 12a , s2 = 9a
+                //if we use default sort method then 9a will be after 12a because 1 is before 9
+                //se we make custom comparator so we can compare 9 and 12 not 9 and 1 
+                int num1 = Integer.parseInt(s1.replaceAll("[^0-9]", ""));
+                int num2 = Integer.parseInt(s2.replaceAll("[^0-9]", ""));
+                return num1 - num2;
+            }
+        };
+        Arrays.sort(this.displayGradesList, comparator);
     }
 
     private void displayChooseGradeDialog() {
@@ -372,9 +390,11 @@ public class MainActivity extends AppCompatActivity {
         JSONArray array = new JSONArray(jsonString);
         String name = "name";
         this.displayTeachersList = new String[array.length()];
+        this.originalTeachersList = new String[array.length()];
         for (int i = 0; i < array.length(); i++) {
             JSONObject jsonObject = array.getJSONObject(i);
             this.displayTeachersList[i] = jsonObject.getString(name);
+            this.originalTeachersList[i] = jsonObject.getString(name);
         }
         Arrays.sort(this.displayTeachersList);
     }
@@ -448,9 +468,19 @@ public class MainActivity extends AppCompatActivity {
                 //if we are in teachers view we need the teacher id else in students view we need the grade value
                 if (isNetworkAvailable()) {
                     if (!sharedPreferences.getBoolean("studentView", false)) {
-                        int teacherId = index + 1;
+                        //select the teacher id from the original list not the sorted one
+                        String teacherName = displayList[index];
+                        int teacherId = 1;
+                        for (int i = 0; i < originalTeachersList.length; i++) {
+                            if (teacherName.equals(originalTeachersList[i])) {
+                                teacherId = i + 1;
+                                break;
+                            }
+                        }
+                        //select the teacher table from the database
                         takeSelectedTableFromDatabase(teacherId + "");
                     } else {
+                        //select the grade from the database
                         takeSelectedTableFromDatabase(displayList[index]);
                     }
                     chooseDialog.dismiss();
@@ -529,12 +559,11 @@ public class MainActivity extends AppCompatActivity {
     private void handleParsingError() {
         Toast.makeText(this, "Грешка при обработването на данните. Моля, опитайте по-късно.", Toast.LENGTH_SHORT).show();
         if (sharedPreferences.getBoolean("studentFirstStart", true)
-                && sharedPreferences.getBoolean("teacherFirstStart", true)) {
+                || sharedPreferences.getBoolean("teacherFirstStart", true)) {
             //app is entering this view for the first time so we return back to the choose school activity
             this.sharedPreferences.edit().putBoolean("firstrun", true).apply();
             finish();
         }
-        //TODO
     }
 
     private void setView(boolean studentView, boolean buttonClick) {
@@ -630,10 +659,12 @@ public class MainActivity extends AppCompatActivity {
                         displayChooseDialog(gradesList);
                     }
                 } else {
-                    String[] teacherList = savedInstanceState.getStringArray("teachersList");
-                    if (teacherList != null) {
-                        this.displayTeachersList = teacherList;
-                        displayChooseDialog(teacherList);
+                    String[] teachersList = savedInstanceState.getStringArray("teachersList");
+                    String[] originalTeachersList = savedInstanceState.getStringArray("originalTeachersList");
+                    if (teachersList != null) {
+                        this.displayTeachersList = teachersList;
+                        this.originalTeachersList = originalTeachersList;
+                        displayChooseDialog(teachersList);
                     }
                 }
             }
