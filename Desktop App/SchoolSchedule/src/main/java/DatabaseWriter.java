@@ -14,18 +14,16 @@ import java.util.Map;
 
 public class DatabaseWriter {
 
-    private static final String URL = "https://timetabletest.000webhostapp.com/login.php";
+    private static final String URL = "https://schooltimetable.site/school_login.php";
     private JFrame jFrame;
     private String path;
     private JFileChooser fileChooser;
     private JTextField usernameText;
     private JPasswordField passwordText;
-    private JComboBox schoolList;
 
-    private DatabaseWriter() throws IOException {
+    private DatabaseWriter() {
         setUpJFrame();
         setUpFileChooser();
-        //TODO HANDLE EXCEPTIONS
     }
 
     private void setUpJFrame() {
@@ -53,7 +51,6 @@ public class DatabaseWriter {
         JLabel passwordLabel = new JLabel("Парола");
         this.passwordText = new JPasswordField(40);
         JLabel chooseSchoolLabel = new JLabel("Избери училище");
-        this.schoolList = createComboBox();
         JButton button = new JButton("Вмъкни таблица");
         button.addActionListener(e -> {
             setUpOnButtonClick();
@@ -76,7 +73,7 @@ public class DatabaseWriter {
                     JOptionPane.showMessageDialog(this.jFrame, "Грешна директория."
                             , "Wrong Path", JOptionPane.ERROR_MESSAGE);
                 } else {
-                    setDatabaseManager(username,password,databaseName);
+                    setDatabaseManager(username, password, databaseName);
                 }
             }
         }
@@ -84,8 +81,7 @@ public class DatabaseWriter {
 
     private boolean checkInput() {
         //check if the user entered all fields
-        if (this.usernameText.getText().isEmpty() || this.passwordText.getPassword().length == 0
-                || this.schoolList.getSelectedIndex() == -1) {
+        if (this.usernameText.getText().isEmpty() || this.passwordText.getPassword().length == 0) {
             return false;
         }
         return true;
@@ -105,10 +101,9 @@ public class DatabaseWriter {
             JOptionPane.showMessageDialog(this.jFrame, "Свързването е успешно! Моля, изберете таблицата за обновяване.",
                     "School Added", JOptionPane.INFORMATION_MESSAGE);
             return result;
-        } else {
-            JOptionPane.showMessageDialog(this.jFrame, result,
-                    "Connection Error", JOptionPane.ERROR_MESSAGE);
         }
+        JOptionPane.showMessageDialog(this.jFrame, result,
+                "Connection Error", JOptionPane.ERROR_MESSAGE);
         return "";
     }
 
@@ -117,6 +112,10 @@ public class DatabaseWriter {
         Map<String, Object> params = new LinkedHashMap<>();
         params.put("username", username);
         params.put("password", password);
+        return setUpConnection(u, params);
+    }
+
+    static String setUpConnection(URL u, Map<String, Object> params) throws IOException {
         StringBuilder postData = new StringBuilder();
         for (Map.Entry<String, Object> param : params.entrySet()) {
             if (postData.length() != 0) {
@@ -142,36 +141,28 @@ public class DatabaseWriter {
         return sb.toString();
     }
 
-    //TODO CHECK DOT SYNTAX
     private void buildLayout(GroupLayout gl, JLabel usernameLabel, JLabel passwordLabel, JLabel chooseSchoolLabel, JButton button) {
         GroupLayout.SequentialGroup hGroup = gl.createSequentialGroup();
 
         hGroup.addGroup(gl.createParallelGroup(GroupLayout.Alignment.CENTER).
-                addComponent(usernameLabel).addComponent(this.usernameText).addComponent(passwordLabel).addComponent(this.passwordText));
-        hGroup.addGroup(gl.createParallelGroup(GroupLayout.Alignment.CENTER).
-                addComponent(chooseSchoolLabel).addComponent(this.schoolList).addComponent(button));
+                addComponent(usernameLabel).addComponent(this.usernameText).addComponent(passwordLabel).addComponent(this.passwordText).addComponent(button));
+
+
         gl.setHorizontalGroup(hGroup);
 
         GroupLayout.SequentialGroup vGroup = gl.createSequentialGroup();
 
         vGroup.addGroup(gl.createParallelGroup(GroupLayout.Alignment.BASELINE).
-                addComponent(usernameLabel).addComponent(chooseSchoolLabel));
+                addComponent(usernameLabel));
         vGroup.addGroup(gl.createParallelGroup(GroupLayout.Alignment.BASELINE).
-                addComponent(this.usernameText).addComponent(this.schoolList));
+                addComponent(this.usernameText));
         vGroup.addGroup(gl.createParallelGroup(GroupLayout.Alignment.BASELINE).
                 addComponent(passwordLabel));
         vGroup.addGroup(gl.createParallelGroup(GroupLayout.Alignment.BASELINE).
-                addComponent(this.passwordText).addComponent(button));
+                addComponent(this.passwordText).addGap(50));
+        vGroup.addGroup(gl.createParallelGroup(GroupLayout.Alignment.BASELINE).
+                addComponent(button));
         gl.setVerticalGroup(vGroup);
-    }
-
-    private JComboBox createComboBox() {
-        JComboBox<String> comboBox = new JComboBox<>();
-        comboBox.addItem("Математическа гимназия \"Гео Милев\" - Плевен");
-        comboBox.addItem("Гимназия с преподаване на чужди езици - Плевен");
-        //default value is null so the user must click something to continue
-        comboBox.setSelectedIndex(-1);
-        return comboBox;
     }
 
     private void setUpFileChooser() {
@@ -193,8 +184,7 @@ public class DatabaseWriter {
         }
     }
 
-    private void setDatabaseManager(String username,String password, String databaseName) {
-        //TODO HANDLE EXCEPTIONS
+    private void setDatabaseManager(String username, String password, String databaseName) {
         Workbook workbook;
         try {
             workbook = WorkbookFactory.create(new File(this.path));
@@ -210,6 +200,8 @@ public class DatabaseWriter {
         try {
             DatabaseManager databaseManager = new DatabaseManager(manager, tManager, username, password, databaseName);
             databaseManager.updateDatabase();
+            JOptionPane.showMessageDialog(this.jFrame, "Училищна програма е обновена!",
+                    "Success", JOptionPane.INFORMATION_MESSAGE);
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this.jFrame, "Проблем при свързването със сървъра.Моля, опитайте по - късно.",
                     "Connection Error", JOptionPane.ERROR_MESSAGE);
