@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    tools:context=".FirstLaunch">
+    tools:context=".ChooseSchool">
 
     <com.example.ivani.schoolscheduleonline.CustomAutoCompleteTextView
         android:id="@+id/actv"

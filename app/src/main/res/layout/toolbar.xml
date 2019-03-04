@@ -12,6 +12,5 @@
         android:id="@+id/logoId"
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
-        android:layout_gravity="center_horizontal"
-        app:srcCompat="@drawable/logo" />
+        android:layout_gravity="center_horizontal" />
 </android.support.v7.widget.Toolbar>

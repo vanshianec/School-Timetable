@@ -1,4 +1,6 @@
 package com.example.ivani.schoolscheduleonline;
+
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.design.widget.TabLayout;
@@ -7,6 +9,8 @@ import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.MenuItem;
+import android.widget.ImageView;
+
 import java.util.Calendar;
 
 public class Timetable extends AppCompatActivity implements Monday.OnFragmentInteractionListener, Tuesday.OnFragmentInteractionListener,
@@ -23,7 +27,7 @@ public class Timetable extends AppCompatActivity implements Monday.OnFragmentInt
         tabLayout = findViewById(R.id.tablayout);
         setTabsTitles(tabLayout);
         final ViewPager viewPager = findViewById(R.id.pager);
-        final PagerAdapter adapter = new PagerAdapter(getSupportFragmentManager(), tabLayout.getTabCount(),getApplicationContext());
+        final PagerAdapter adapter = new PagerAdapter(getSupportFragmentManager(), tabLayout.getTabCount(), getApplicationContext());
         viewPager.setAdapter(adapter);
 
         viewPager.addOnPageChangeListener(new TabLayout.TabLayoutOnPageChangeListener(tabLayout));
@@ -64,6 +68,11 @@ public class Timetable extends AppCompatActivity implements Monday.OnFragmentInt
     }
 
     private void loadCustomActionBar() {
+        Bitmap logo = getIntent().getParcelableExtra("BitmapImage");
+        ImageView schoolLogo = findViewById(R.id.logoId);
+        if (logo != null) {
+            schoolLogo.setImageBitmap(logo);
+        }
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         ActionBar actionBar = getSupportActionBar();

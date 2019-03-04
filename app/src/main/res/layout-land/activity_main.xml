@@ -21,10 +21,8 @@
         android:layout_width="wrap_content"
         android:layout_height="0dp"
         android:layout_gravity="center_horizontal"
-        android:layout_marginTop="15dp"
         android:layout_marginBottom="5dp"
-        android:layout_weight="4"
-        app:srcCompat="@drawable/logo" />
+        android:layout_weight="4" />
 
     <TextView
         android:id="@+id/textView"
@@ -41,7 +39,7 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="5"
+        android:layout_weight="2.5"
         android:orientation="horizontal">
 
         <Button
@@ -57,6 +55,14 @@
             android:textColor="#FFF"
             tools:ignore="NestedWeights" />
 
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginBottom="20dp"
+        android:layout_weight="2.5">
+
         <Button
             android:id="@+id/chooseGrade"
             android:layout_width="0dp"
@@ -67,7 +73,8 @@
             android:layout_weight="1"
             android:background="@drawable/button_style"
             android:text="@string/choose_grade"
-            android:textColor="#FFF" />
+            android:textColor="#FFF"
+            tools:ignore="NestedWeights" />
 
         <Button
             android:id="@+id/switchBtn"
@@ -80,7 +87,6 @@
             android:background="@drawable/button_style"
             android:text="@string/teacher_view"
             android:textColor="#FFF" />
-
 
     </LinearLayout>
 

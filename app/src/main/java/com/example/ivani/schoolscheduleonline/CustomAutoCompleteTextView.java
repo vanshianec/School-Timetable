@@ -27,7 +27,7 @@ public class CustomAutoCompleteTextView extends android.support.v7.widget.AppCom
 
     @Override
     public boolean onKeyPreIme(int keyCode, KeyEvent event) {
-        //when back button is pressed hide keyboard first then suggestions
+        //when back button is pressed hide the keyboard first and then on second press hide the suggesting list
         if (keyCode == KeyEvent.KEYCODE_BACK && isPopupShowing()) {
             InputMethodManager inputManager = (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
             if (inputManager.hideSoftInputFromWindow(findFocus().getWindowToken(),

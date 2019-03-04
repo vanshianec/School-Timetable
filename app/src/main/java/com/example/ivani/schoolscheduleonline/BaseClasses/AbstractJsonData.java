@@ -44,10 +44,6 @@ public abstract class AbstractJsonData implements JsonData {
         return DATABASE_SHIFT_COLUMN_NAME;
     }
 
-    protected List<TabRow> getTabRowList() {
-        return tabRowList;
-    }
-
     protected String getJsonString() {
         return jsonString;
     }

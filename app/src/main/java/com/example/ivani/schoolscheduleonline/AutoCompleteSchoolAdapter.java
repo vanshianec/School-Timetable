@@ -37,12 +37,14 @@ public class AutoCompleteSchoolAdapter extends ArrayAdapter<SchoolItem> {
                     R.layout.school_autocomplete_row, parent, false
             );
         }
-
+        //create custom school item text and image view
         TextView textViewName = convertView.findViewById(R.id.text_view_name);
         ImageView imageViewFlag = convertView.findViewById(R.id.school_image);
+        //get the item based on selected position from the autocomplete text view
         SchoolItem schoolItem = getItem(position);
 
         if (schoolItem != null) {
+            //set the text and image view in the school item
             textViewName.setText(schoolItem.getSchoolName());
             imageViewFlag.setImageBitmap(schoolItem.getSchoolImage());
         }
@@ -54,11 +56,13 @@ public class AutoCompleteSchoolAdapter extends ArrayAdapter<SchoolItem> {
         @Override
         protected FilterResults performFiltering(CharSequence constraint) {
             FilterResults results = new FilterResults();
+            //create suggestion list to display in the show drop down menu
             List<SchoolItem> suggestions = new ArrayList<>();
-
+            //add all school items if the user hasn't typed anything in the autocomplete text field
             if (constraint == null || constraint.length() == 0) {
                 suggestions.addAll(schoolListFull);
             } else {
+                //else add all matching school items based on the text the user has typed in the autocomplete text field
                 String filterPattern = constraint.toString().toLowerCase().trim();
                 for (SchoolItem item : schoolListFull) {
                     if (item.getSchoolName().toLowerCase().contains(filterPattern)) {
@@ -74,13 +78,17 @@ public class AutoCompleteSchoolAdapter extends ArrayAdapter<SchoolItem> {
 
         @Override
         protected void publishResults(CharSequence constraint, FilterResults results) {
+            //remove all elements from the list
             clear();
+            //add all results that matched the filtering
             addAll((List) results.values);
+            //refresh the view
             notifyDataSetChanged();
         }
 
         @Override
         public CharSequence convertResultToString(Object resultValue) {
+            //get the char sequence of all results that matched the filtering
             return ((SchoolItem) resultValue).getSchoolName();
         }
     };
