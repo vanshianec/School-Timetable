@@ -44,6 +44,10 @@ public class TeacherJsonData extends AbstractJsonData {
         //set clock time based on subject order
         String clockTime = super.getRowDataManager().getTeacherCustomClockTime(order);
         String room = jsonobject.getString(super.getRoomDay());
+        //if there is no room replace it with dash
+        if (room.equals("0") || room.isEmpty()) {
+            room = "-";
+        }
         String borderColor = super.getRowDataManager().getColorBasedOnRealTime(clockTime, super.getDay());
         super.addResult(new TabRow(orderCount, clockTime, name, room, borderColor));
     }

@@ -35,7 +35,7 @@
         android:paddingTop="9dp"
         android:text="@string/title"
         android:textColor="#FFF"
-        android:textSize="27sp"
+        android:textSize="27dp"
         android:textStyle="bold" />
 
     <LinearLayout

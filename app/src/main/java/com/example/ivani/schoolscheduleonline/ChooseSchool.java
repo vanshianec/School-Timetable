@@ -10,6 +10,7 @@ import android.os.Build;
 import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.DisplayMetrics;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
@@ -114,7 +115,7 @@ public class ChooseSchool extends AppCompatActivity {
         //get the school logos from database
         List<Bitmap> logos = getLogosFromDatabase(schoolLogos);
         //for each school add a logo and a name to be displayed in the autocomplete suggestions list
-        int counter = 0;
+        short counter = 0;
         if (logos != null) {
             for (Bitmap logo : logos) {
                 this.schoolItems.add(new SchoolItem(schoolNames[counter], logo));
@@ -127,6 +128,8 @@ public class ChooseSchool extends AppCompatActivity {
 
     @SuppressLint("StaticFieldLeak")
     private List<Bitmap> getLogosFromDatabase(String[] schoolLogos) {
+        final short width = 270;
+        final short height = 290;
         List<Bitmap> logos = null;
         try {
             logos = new AsyncTask<String[], Void, List<Bitmap>>() {
@@ -134,9 +137,9 @@ public class ChooseSchool extends AppCompatActivity {
                 protected List<Bitmap> doInBackground(String[]... params) {
                     try {
                         List<Bitmap> bitmaps = new ArrayList<Bitmap>();
-                        for (int i = 0; i < params[0].length; ++i) {
+                        for (short i = 0; i < params[0].length; ++i) {
                             //use glide library to get all school logos from the database
-                            bitmaps.add(Glide.with(ChooseSchool.this).asBitmap().override(300, 320).load(params[0][i]).submit().get());
+                            bitmaps.add(Glide.with(ChooseSchool.this).asBitmap().override(width, height).load(params[0][i]).submit().get());
                         }
                         return bitmaps;
                     } catch (InterruptedException e) {

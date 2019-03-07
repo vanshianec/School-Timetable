@@ -10,7 +10,7 @@ public class RowDataManager {
     public String getColorBasedOnRealTime(String customTime, String day) {
         //short break time
         int tenMinutesInMillis = 600000;
-        //check for long break
+        //there are two long breaks during the day the first is when the hour is '10' and the second is when the hours is '16'
         if (customTime.startsWith("10") || customTime.startsWith("16")) {
             tenMinutesInMillis = 600000 * 2;
         }
@@ -21,23 +21,24 @@ public class RowDataManager {
         int startTimeMinutes = Integer.parseInt(startTime.split(" : ")[1]);
         int endTimeHours = Integer.parseInt(endTime.split(" : ")[0]);
         int endTimeMinutes = Integer.parseInt(endTime.split(" : ")[1]);
-
+        //get the time when the subject starts
         Calendar calendarFirst = Calendar.getInstance();
         calendarFirst.set(Calendar.HOUR_OF_DAY, startTimeHours);
         calendarFirst.set(Calendar.MINUTE, startTimeMinutes);
         calendarFirst.set(Calendar.SECOND, 0);
-
+        //get the time when the subject ends
         Calendar calendarSecond = Calendar.getInstance();
         calendarSecond.set(Calendar.HOUR_OF_DAY, endTimeHours);
         calendarSecond.set(Calendar.MINUTE, endTimeMinutes);
         calendarSecond.set(Calendar.SECOND, 0);
-
-        Calendar realTimeCalendar = Calendar.getInstance();
+        //get the current time
+        Calendar currentTimeCalendar = Calendar.getInstance();
 
         long firstTime = calendarFirst.getTimeInMillis() - tenMinutesInMillis;
         long secondTime = calendarSecond.getTimeInMillis();
-        long realTime = realTimeCalendar.getTimeInMillis();
-        String realTimeDay = getDayOfWeek(realTimeCalendar.get(Calendar.DAY_OF_WEEK));
+        long realTime = currentTimeCalendar.getTimeInMillis();
+        String realTimeDay = getDayOfWeek(currentTimeCalendar.get(Calendar.DAY_OF_WEEK));
+        //if the current time is between the end of the current subject and the end of the next subject we return a color which is not white
         return (firstTime < realTime && realTime <= secondTime && realTimeDay.equals(day)) ? "#D81B60" : "#FFFFFF";
     }
 

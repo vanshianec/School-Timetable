@@ -20,6 +20,8 @@ import android.support.annotation.NonNull;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Base64;
+import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.AdapterView;
@@ -27,6 +29,7 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ListView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.android.volley.DefaultRetryPolicy;
@@ -329,7 +332,7 @@ public class MainActivity extends AppCompatActivity {
         String logoURL = "logo_url";
         this.displaySchoolList = new String[array.length()];
         this.displaySchoolLogosURLs = new String[array.length()];
-        for (int i = 0; i < array.length(); i++) {
+        for (short i = 0; i < array.length(); i++) {
             JSONObject jsonObject = array.getJSONObject(i);
             this.displaySchoolList[i] = jsonObject.getString(name);
             this.displaySchoolLogosURLs[i] = jsonObject.getString(logoURL);
@@ -354,7 +357,7 @@ public class MainActivity extends AppCompatActivity {
         JSONArray array = new JSONArray(jsonString);
         String name = "grade";
         this.displayGradesList = new String[array.length()];
-        for (int i = 0; i < array.length(); i++) {
+        for (short i = 0; i < array.length(); i++) {
             JSONObject jsonObject = array.getJSONObject(i);
             this.displayGradesList[i] = jsonObject.getString(name);
         }
@@ -367,9 +370,9 @@ public class MainActivity extends AppCompatActivity {
             public int compare(String s1, String s2) {
                 //example strings s1 = 12a , s2 = 9a
                 //if we use default sort method then 9a will be after 12a because 1 is before 9
-                //se we make custom comparator so we can compare 9 and 12 not 9 and 1 
-                int num1 = Integer.parseInt(s1.replaceAll("[^0-9]", ""));
-                int num2 = Integer.parseInt(s2.replaceAll("[^0-9]", ""));
+                //se we make custom comparator so we can compare 9 and 12 not 9 and 1
+                byte num1 = Byte.parseByte(s1.replaceAll("[^0-9]", ""));
+                byte num2 = Byte.parseByte(s2.replaceAll("[^0-9]", ""));
                 return num1 - num2;
             }
         };
@@ -391,7 +394,7 @@ public class MainActivity extends AppCompatActivity {
         String name = "name";
         this.displayTeachersList = new String[array.length()];
         this.originalTeachersList = new String[array.length()];
-        for (int i = 0; i < array.length(); i++) {
+        for (short i = 0; i < array.length(); i++) {
             JSONObject jsonObject = array.getJSONObject(i);
             this.displayTeachersList[i] = jsonObject.getString(name);
             this.originalTeachersList[i] = jsonObject.getString(name);
@@ -427,7 +430,7 @@ public class MainActivity extends AppCompatActivity {
         return builder;
     }
 
-    private void setAlertDialogSettings(AlertDialog dialog, String[] displayList) {
+    private void setAlertDialogSettings(final AlertDialog dialog, String[] displayList) {
         dialog.setOnDismissListener(new DialogInterface.OnDismissListener() {
             @Override
             public void onDismiss(DialogInterface dialog) {
@@ -471,7 +474,7 @@ public class MainActivity extends AppCompatActivity {
                         //select the teacher id from the original list not the sorted one
                         String teacherName = displayList[index];
                         int teacherId = 1;
-                        for (int i = 0; i < originalTeachersList.length; i++) {
+                        for (short i = 0; i < originalTeachersList.length; i++) {
                             if (teacherName.equals(originalTeachersList[i])) {
                                 teacherId = i + 1;
                                 break;
@@ -613,6 +616,9 @@ public class MainActivity extends AppCompatActivity {
         Bitmap logo = getIntent().getParcelableExtra("BitmapLogo");
         //if we receive the logo store it in shared preferences for future usage
         if (logo != null) {
+            int width = getPixelsBasedOnResolution(this, logo.getWidth());
+            int height = getPixelsBasedOnResolution(this, logo.getHeight());
+            logo = Bitmap.createScaledBitmap(logo, width, height, false);
             this.schoolLogo.setImageBitmap(logo);
             String encode = encodeToBase64(logo);
             this.sharedPreferences.edit().putString("bit", encode).apply();
@@ -621,6 +627,21 @@ public class MainActivity extends AppCompatActivity {
             Bitmap currentLogo = decodeBase64(this.sharedPreferences.getString("bit", ""));
             this.schoolLogo.setImageBitmap(currentLogo);
         }
+    }
+
+    private int getPixelsBasedOnResolution(Context context, int screenMetric) {
+        float density = context.getResources().getDisplayMetrics().density;
+        // adjust image resolution based on screen density
+        if (density >= 4.0) {
+            return screenMetric * 3 / 2;
+        }
+        if (density >= 3.0) {
+            return screenMetric * 5 / 4;
+        }
+        if (density >= 1) {
+            return screenMetric * 4 / 5;
+        }
+        return screenMetric;
     }
 
     private String encodeToBase64(Bitmap image) {

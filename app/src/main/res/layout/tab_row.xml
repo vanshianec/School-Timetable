@@ -37,7 +37,7 @@
             android:layout_toEndOf="@id/clock_logo"
             android:layout_marginStart="10dp"
             android:layout_marginBottom="5dp"
-            android:textSize = "22sp"
+            android:textSize = "22dp"
             android:text = "12 : 30 - 12 : 40"
             android:textColor="#FFF"
             android:layout_width="wrap_content"
@@ -50,7 +50,7 @@
             android:textColor="#FFF"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="22sp"
+            android:textSize="22dp"
             android:text = "#1"/>
 
         <ImageView
@@ -66,7 +66,7 @@
             android:layout_toEndOf="@id/teacher_logo"
             android:layout_marginStart="10dp"
             android:layout_marginTop="10dp"
-            android:textSize = "18sp"
+            android:textSize = "18dp"
             android:text = "Виктория Пантелеева"
             android:textColor="#FFF"
             android:layout_width="wrap_content"
@@ -86,7 +86,7 @@
             android:layout_toEndOf="@id/room_logo"
             android:layout_marginStart="10dp"
             android:layout_marginTop="10dp"
-            android:textSize = "18sp"
+            android:textSize = "18dp"
             android:text = "101"
             android:textColor="#FFF"
             android:layout_width="wrap_content"

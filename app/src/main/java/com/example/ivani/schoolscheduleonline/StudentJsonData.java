@@ -49,8 +49,17 @@ public class StudentJsonData extends AbstractJsonData {
         //example teacherName1/teacherName2 -> teacherName1 \n teacherName2
         name = name.replace("/", "\n");
         String room = jsonobject.getString(super.getRoomDay());
-        //add space between two rooms for better view
-        room = room.replace("/", " / ");
+        //if the room doesn't exist add dash
+        if (room.equals("0") || room.isEmpty()) {
+            room = "-";
+        }
+        //the rooms 1,2 or 3 are for the gym
+        if (room.trim().equals("1") || room.trim().equals("2") || room.trim().equals("3")) {
+            room = "физк.салон";
+        } else {
+            //add space between two rooms for better view
+            room = room.replace("/", " / ");
+        }
         //set the border color on the current tab row
         String borderColor = super.getRowDataManager().getColorBasedOnRealTime(clockTime, super.getDay());
         super.addResult(new TabRow(order, clockTime, name, room, borderColor));
