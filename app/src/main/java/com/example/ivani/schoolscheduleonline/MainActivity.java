@@ -616,9 +616,6 @@ public class MainActivity extends AppCompatActivity {
         Bitmap logo = getIntent().getParcelableExtra("BitmapLogo");
         //if we receive the logo store it in shared preferences for future usage
         if (logo != null) {
-            int width = getPixelsBasedOnResolution(this, logo.getWidth());
-            int height = getPixelsBasedOnResolution(this, logo.getHeight());
-            logo = Bitmap.createScaledBitmap(logo, width, height, false);
             this.schoolLogo.setImageBitmap(logo);
             String encode = encodeToBase64(logo);
             this.sharedPreferences.edit().putString("bit", encode).apply();
@@ -627,21 +624,6 @@ public class MainActivity extends AppCompatActivity {
             Bitmap currentLogo = decodeBase64(this.sharedPreferences.getString("bit", ""));
             this.schoolLogo.setImageBitmap(currentLogo);
         }
-    }
-
-    private int getPixelsBasedOnResolution(Context context, int screenMetric) {
-        float density = context.getResources().getDisplayMetrics().density;
-        // adjust image resolution based on screen density
-        if (density >= 4.0) {
-            return screenMetric * 3 / 2;
-        }
-        if (density >= 3.0) {
-            return screenMetric * 5 / 4;
-        }
-        if (density >= 1) {
-            return screenMetric * 4 / 5;
-        }
-        return screenMetric;
     }
 
     private String encodeToBase64(Bitmap image) {

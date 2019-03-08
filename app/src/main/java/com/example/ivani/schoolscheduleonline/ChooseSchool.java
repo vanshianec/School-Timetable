@@ -128,8 +128,8 @@ public class ChooseSchool extends AppCompatActivity {
 
     @SuppressLint("StaticFieldLeak")
     private List<Bitmap> getLogosFromDatabase(String[] schoolLogos) {
-        final short width = 270;
-        final short height = 290;
+        final short width = 300;
+        final short height = 320;
         List<Bitmap> logos = null;
         try {
             logos = new AsyncTask<String[], Void, List<Bitmap>>() {
