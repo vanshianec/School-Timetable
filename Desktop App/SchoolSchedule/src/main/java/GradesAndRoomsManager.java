@@ -81,7 +81,6 @@ public class GradesAndRoomsManager extends Common {
                 this.thursdaySecondShiftRooms = sortRooms(sheet, ROOM_ROW_SECOND_SHIFT_START_INDEX, ROOM_ROW_SECOND_SHIFT_END_INDEX);
                 break;
             case 7:
-                //TODO RENAME AND ROW
                 this.fridayFirstShiftRooms = sortRooms(sheet, ROW_START_INDEX, FRIDAY_ROOM_FIRST_SHIFT_END_INDEX);
                 this.fridaySecondShiftRooms = sortRooms(sheet, FRIDAY_ROOM_SECOND_SHIFT_START_INDEX, FRIDAY_ROOM_SECOND_SHIFT_END_INDEX);
                 break;
@@ -137,11 +136,9 @@ public class GradesAndRoomsManager extends Common {
         if (!(teacherId.equals("") || teacherId.contains("ф") || teacherId.contains("-") ||
                 teacherId.contains("/") || teacherId.split("\\s+").length > 2)) {
 
-            //TODO DUPLICATED CODE
             if (teacherId.contains("ч")) {
                 teacherId = teacherId.replace("ч", "");
             }
-            //TODO TEST WITH TRIM
             if (teacherId.contains("\n")) {
                 teacherId = teacherId.replace("\n", "");
             }

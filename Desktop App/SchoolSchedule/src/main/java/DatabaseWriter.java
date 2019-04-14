@@ -14,7 +14,7 @@ import java.util.Map;
 
 public class DatabaseWriter {
 
-    private static final String URL = "https://schooltimetable.site/school_login.php";
+    private static final String URL = "https://myschooltimetable.000webhostapp.com/school_login.php";
     private JFrame jFrame;
     private String path;
     private JFileChooser fileChooser;
@@ -200,7 +200,7 @@ public class DatabaseWriter {
         try {
             DatabaseManager databaseManager = new DatabaseManager(manager, tManager, username, password, databaseName);
             databaseManager.updateDatabase();
-            JOptionPane.showMessageDialog(this.jFrame, "Училищна програма е обновена!",
+            JOptionPane.showMessageDialog(this.jFrame, "Училищната програма е обновена!",
                     "Success", JOptionPane.INFORMATION_MESSAGE);
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this.jFrame, "Проблем при свързването със сървъра.Моля, опитайте по - късно.",

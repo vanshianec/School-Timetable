@@ -11,8 +11,8 @@ import java.util.Map;
 import static Constants.Constants.*;
 
 public class DatabaseManager {
-    private static final String UPDATE_DATABASE_SERVER_URL = "https://schooltimetable.site/update_school_database.php";
-    private static final String GET_TEACHERS_SERVER_URL = "https://schooltimetable.site/get_teachers.php";
+    private static final String UPDATE_DATABASE_SERVER_URL = "https://myschooltimetable.000webhostapp.com/update_school_database.php";
+    private static final String GET_TEACHERS_SERVER_URL = "https://myschooltimetable.000webhostapp.com/get_teachers.php";
 
     private GradesAndRoomsManager gradesAndRoomsManager;
     private TeachersManager teachersManager;
@@ -31,6 +31,7 @@ public class DatabaseManager {
         this.databaseName = databaseName;
         this.queryStringBuilder = new StringBuilder();
         this.teacherIdAndNameDatabase = new LinkedHashMap<>();
+        //TODO method should be used only on first database creation
         this.addCreateMissingTablesQuery();
         this.addTeacherUpdates();
         this.updateDatabaseTables();
