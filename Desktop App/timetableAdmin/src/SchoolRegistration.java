@@ -1,4 +1,3 @@
-import javax.net.ssl.HttpsURLConnection;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
@@ -11,13 +10,12 @@ import java.io.Reader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
-import java.security.Security;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class SchoolRegistration {
 
-    private static final String URL = "https://schooltimetable.site/add_school_admin.php";
+    private static final String URL = "https://myschooltimetable.000webhostapp.com/add_school_admin.php";
     private JFrame jFrame;
     private JTextField schoolNameText;
     private JTextField schoolUsernameText;
@@ -102,7 +100,7 @@ public class SchoolRegistration {
         String username = schoolUsernameText.getText().trim();
         String password = schoolPasswordText.getText().trim();
         String databaseName = schoolDatabaseText.getText().trim();
-        String logoURLFormat = "https://schooltimetable.site/school_logos/%s.png";
+        String logoURLFormat = "https://myschooltimetable.000webhostapp.com/logos/%s.png";
         String logoURL = String.format(logoURLFormat, username);
         manageConnection(name, username, password, databaseName, logoURL);
     }
@@ -119,9 +117,8 @@ public class SchoolRegistration {
         if (result.contains("успешно")) {
             JOptionPane.showMessageDialog(this.jFrame, result,
                     "School Added", JOptionPane.INFORMATION_MESSAGE);
-        }
-        else{
-            JOptionPane.showMessageDialog(this.jFrame,result,"Connection Error",JOptionPane.ERROR_MESSAGE);
+        } else {
+            JOptionPane.showMessageDialog(this.jFrame, result, "Connection Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
