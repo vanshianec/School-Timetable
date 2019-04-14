@@ -7,10 +7,9 @@ import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.os.AsyncTask;
 import android.os.Build;
+import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
-import android.util.DisplayMetrics;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
@@ -235,7 +234,7 @@ public class ChooseSchool extends AppCompatActivity {
 
     private void getSchoolDatabaseNamesFromDatabase(final String value, final Intent intent) {
         //send request to the database
-        String url = "https://schooltimetable.site/get_database_name.php";
+        String url = "https://myschooltimetable.000webhostapp.com/get_database_name.php";
         StringRequest request = new StringRequest(Request.Method.POST, url,
                 new Response.Listener<String>() {
                     @Override

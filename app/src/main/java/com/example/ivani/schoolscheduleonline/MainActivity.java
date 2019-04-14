@@ -20,8 +20,6 @@ import android.support.annotation.NonNull;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Base64;
-import android.view.Gravity;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.AdapterView;
@@ -29,7 +27,6 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ListView;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import com.android.volley.DefaultRetryPolicy;
@@ -52,8 +49,8 @@ import java.util.Map;
 
 
 public class MainActivity extends AppCompatActivity {
-    private static final String GET_SCHOOL_NAME_URL = "https://schooltimetable.site/get_school_name_and_logo.php";
-    private static final String GET_TEACHERS_OR_GRADES_NAMES = "https://schooltimetable.site/get_teachers_or_grades_names.php";
+    private static final String GET_SCHOOL_NAME_URL = "https://myschooltimetable.000webhostapp.com/get_school_name_and_logo.php";
+    private static final String GET_TEACHERS_OR_GRADES_NAMES = "https://myschooltimetable.000webhostapp.com/get_teachers_or_grades_names.php";
 
     private String[] displaySchoolList;
     private String[] displaySchoolLogosURLs;
@@ -321,6 +318,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             } else {
                 handleParsingError();
+                e.printStackTrace();
             }
         }
     }
@@ -496,7 +494,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void takeSelectedTableFromDatabase(final String value) {
         //send request to the database
-        String url = "https://schooltimetable.site/get_school_grade_or_teacher_data.php";
+        String url = "https://myschooltimetable.000webhostapp.com/get_school_grade_or_teacher_data.php";
         StringRequest request = new StringRequest(Request.Method.POST, url,
                 new Response.Listener<String>() {
                     @Override
@@ -581,6 +579,11 @@ public class MainActivity extends AppCompatActivity {
             if (this.sharedPreferences.getBoolean("studentFirstStart", false)) {
                 // if the user enters the student view for the first time open the choose grade list
                 displayChooseList(true);
+            } else {
+                //else open the timetable view if the switch button is not clicked
+                if (!buttonClick) {
+                    showTimetable();
+                }
             }
         }
         //else we set the view in teacherView
@@ -597,6 +600,11 @@ public class MainActivity extends AppCompatActivity {
             if (this.sharedPreferences.getBoolean("teacherFirstStart", false)) {
                 // if the user enters the teacher view for the first time open the choose teacher list
                 displayChooseList(false);
+            } else {
+                //else open the timetable view if the switch button is not clicked
+                if (!buttonClick) {
+                    showTimetable();
+                }
             }
         }
     }
@@ -679,17 +687,21 @@ public class MainActivity extends AppCompatActivity {
         showTimetableBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent intent = new Intent(MainActivity.this, Timetable.class);
-                //get the logo image from the choose school activity
-                Bitmap logo = getIntent().getParcelableExtra("BitmapLogo");
-                //if the app was closed the image is null so we need to restore it
-                if (logo == null) {
-                    logo = decodeBase64(sharedPreferences.getString("bit", ""));
-                }
-                intent.putExtra("BitmapImage", logo);
-                startActivity(intent);
+                showTimetable();
             }
         });
+    }
+
+    private void showTimetable() {
+        Intent intent = new Intent(MainActivity.this, Timetable.class);
+        //get the logo image from the choose school activity
+        Bitmap logo = getIntent().getParcelableExtra("BitmapLogo");
+        //if the app was closed the image is null so we need to restore it
+        if (logo == null) {
+            logo = decodeBase64(sharedPreferences.getString("bit", ""));
+        }
+        intent.putExtra("BitmapImage", logo);
+        startActivity(intent);
     }
 
     private void setChangeSchoolListener() {
